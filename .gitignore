@@ -1,3 +1,12 @@
+### Custom
+
+# data folders
+raw_data/
+dataset*/
+
+
+### Template
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
