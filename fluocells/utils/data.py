@@ -59,6 +59,15 @@ def dump_tif_metadata(metadata, outpath):
             file.write(line)
 
 
+def dump_exif_metadata(metadata, outpath):
+    with open(outpath, "w") as file:
+        header = "# metadata from pyexiv2.Image().read_exif()\n"
+        file.write(header)
+        for key in metadata.keys():
+            line = f"{key}\t{metadata[key]}\n"
+            file.write(line)
+
+
 def get_object_properties(mask: np.ndarray):
     labels = measure.label(mask, connectivity=1, return_num=False)
     regprops = measure.regionprops(labels)
@@ -222,7 +231,7 @@ EXTENSIONS = [".png", ".jpg", ".TIFF", ".TIF"]
 
 
 def get_all_paths(
-    source_path: Path, mode: Literal["images", "masks"] = "images", exts=EXTENSIONS
+    source_path: Path, mode: Literal[None, "images", "masks"] = "images", exts=EXTENSIONS
 ) -> tuple:
     """Recursevely search for files with desired extension inside source_path.
 
@@ -242,13 +251,22 @@ def get_all_paths(
             img_list, ignored = get_all_paths(p, mode=mode, exts=exts)
             all_files_list.extend(img_list)
             ignored_extensions.extend(ignored)
-        elif mode != p.parent.name:
+        elif (mode is not None) & (mode != p.parent.name):
             continue
         elif p.suffix in exts:
             all_files_list.append(p)
         else:
             ignored_extensions.append(p.suffix)
     return all_files_list, set(ignored_extensions)
+
+
+def get_image_name_relative_path(
+    image_name_row: pd.DataFrame, mode: Literal["images", "masks"] = "images"
+) -> str:
+    relative_path = "/".join(
+            [image_name_row.dataset.values[0], image_name_row.partition.values[0], mode]
+        )
+    return relative_path
 
 
 def compute_masks_stats(masks_paths: List[Path]) -> pd.DataFrame:
