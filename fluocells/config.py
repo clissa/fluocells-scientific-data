@@ -33,3 +33,5 @@ DATA_PATH_g = DATA_PATH / "green"
 UNLABELLED_IMG_PATH_r = DATA_PATH_r / "unlabelled/images"
 UNLABELLED_IMG_PATH_y = DATA_PATH_y / "unlabelled/images"
 UNLABELLED_IMG_PATH_g = DATA_PATH_g / "unlabelled/images"
+
+DEBUG_PATH = REPO_PATH / "debug"
