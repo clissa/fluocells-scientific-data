@@ -48,8 +48,16 @@ def tif2png_with_metadata(p: Path, outpath: Path, outname: Union[str, None] = No
         outname = outpath / outname if outname else outpath / (p.stem + ".png")
         # print(f'Saving converted file to: {outname}')
         tiff_image.save(outname, format="PNG")
+    
 
-
+def jpg2png_with_metadata(p: Path, outpath: Path, outname: Union[str, None] = None):
+    with Image.open(p) as jpg_image:
+        outpath.mkdir(exist_ok=True, parents=True)
+        outname = outpath / outname if outname else outpath / (p.stem + ".png")
+        # print(f'Saving converted file to: {outname}')
+        jpg_image.save(outname, format="PNG")
+        
+        
 def dump_tif_metadata(metadata, outpath):
     with open(outpath, "w") as file:
         header = "# metadata from tifffile.TiffFile().pages[0].tags\n"
