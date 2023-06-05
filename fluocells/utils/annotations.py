@@ -27,9 +27,11 @@ from pycocotools import coco as cocoUtils
 import xml.etree.ElementTree as ET
 
 import cv2
+from skimage.measure import regionprops, label
 from matplotlib import pyplot as plt
 
 
+# RLE
 def binary_mask_to_rle(binary_mask):
     # Convert binary mask to RLE encoding
     binary_mask = np.asfortranarray(binary_mask.astype(np.uint8))
@@ -61,6 +63,7 @@ def load_rle_encoding(rle_path):
     raise (NotImplementedError)
 
 
+# POLYGON
 def sample_contour_points(contour, max_points):
     # Sample points from the contour
     num_points = len(contour)
@@ -95,6 +98,7 @@ def polygon_to_binary_mask(polygons, image_shape):
     return binary_mask
 
 
+# BOUNDING BOXES
 def binary_mask_to_bbox(binary_mask):
     # Find contours in the binary mask
     contours, _ = cv2.findContours(
@@ -120,6 +124,35 @@ def bbox_to_binary_mask(boxes, image_shape):
 
         # Draw a filled rectangle on the binary mask
         binary_mask[y : y + h, x : x + w] = 1
+
+    return binary_mask
+
+
+# DOT ANNOTATIONS
+def binary_mask_to_dots(binary_mask):
+    # Find contours in the binary mask: skimage seems more robust than cv2 for small objects
+    labeled_mask = label(binary_mask.astype(np.uint8))
+    region_properties = regionprops(labeled_mask)
+
+    # Extract center coordinates for each object
+    dots = []
+    for prop in region_properties:
+        centroid = prop.centroid
+        cX = int(centroid[1])
+        cY = int(centroid[0])
+        dots.append((cX, cY))
+
+    return dots
+
+
+def dots_to_binary_mask(dots, image_shape):
+    # Create a black image of the specified shape
+    binary_mask = np.zeros(image_shape, dtype=np.uint8)
+
+    # Set the value of dot locations to 1 in the binary mask
+    for dot in dots:
+        x, y = dot
+        binary_mask[y, x] = 1
 
     return binary_mask
 
@@ -156,6 +189,17 @@ def test_bbox(binary_mask):
     print("Bounding box conversion test passed.")
 
 
+def test_dots(binary_mask):
+    dots = binary_mask_to_dots(binary_mask)
+
+    expected_output = np.array([(2, 0), (2, 3)])
+
+    assert np.array_equal(
+        dots, expected_output
+    ), "Incorrect dot encoding! Please fix the implementation"
+    print("Dot annotation conversion test passed.")
+
+
 if __name__ == "__main__":
     print("Running tests . . .")
     # Example usage: ENCODING
@@ -165,3 +209,4 @@ if __name__ == "__main__":
     test_rle(binary_mask)
     test_polygon(binary_mask)
     test_bbox(binary_mask)
+    test_dots(binary_mask)
