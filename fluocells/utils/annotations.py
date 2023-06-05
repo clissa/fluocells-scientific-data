@@ -157,6 +157,15 @@ def dots_to_binary_mask(dots, image_shape):
     return binary_mask
 
 
+# COUNT
+def binary_mask_to_count(binary_mask):
+    contours, _ = cv2.findContours(
+        binary_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    return len(contours)
+
+
+# TESTS
 def test_rle(binary_mask):
     rle_encoding = binary_mask_to_rle(binary_mask)
     img_height, img_width = binary_mask.shape
@@ -200,6 +209,15 @@ def test_dots(binary_mask):
     print("Dot annotation conversion test passed.")
 
 
+def test_count(binary_mask):
+    n = binary_mask_to_count(binary_mask)
+    expected_count = 2
+    assert (
+        n == expected_count
+    ), "Incorrect count encoding! Please fix the implementation"
+    print("Count retrieval test passed.")
+
+
 if __name__ == "__main__":
     print("Running tests . . .")
     # Example usage: ENCODING
@@ -210,3 +228,4 @@ if __name__ == "__main__":
     test_polygon(binary_mask)
     test_bbox(binary_mask)
     test_dots(binary_mask)
+    test_count(binary_mask)
