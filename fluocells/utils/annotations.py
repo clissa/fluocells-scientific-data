@@ -95,6 +95,35 @@ def polygon_to_binary_mask(polygons, image_shape):
     return binary_mask
 
 
+def binary_mask_to_bbox(binary_mask):
+    # Find contours in the binary mask
+    contours, _ = cv2.findContours(
+        binary_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    # Extract bounding box for each contour
+    bboxes = []
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        bboxes.append((x, y, w, h))
+
+    return bboxes
+
+
+def bbox_to_binary_mask(boxes, image_shape):
+    # Create a black image of the specified shape
+    binary_mask = np.zeros(image_shape, dtype=np.uint8)
+
+    for bbox in boxes:
+        # Extract bounding box coordinates
+        x, y, w, h = bbox
+
+        # Draw a filled rectangle on the binary mask
+        binary_mask[y : y + h, x : x + w] = 1
+
+    return binary_mask
+
+
 def test_rle(binary_mask):
     rle_encoding = binary_mask_to_rle(binary_mask)
     img_height, img_width = binary_mask.shape
@@ -116,6 +145,17 @@ def test_polygon(binary_mask):
     print("Polygon conversion test passed.")
 
 
+def test_bbox(binary_mask):
+    # Test conversion from binary mask to bounding box and back to binary mask
+    bbox = binary_mask_to_bbox(binary_mask)
+    restored_binary_mask = bbox_to_binary_mask(bbox, binary_mask.shape)
+
+    assert np.array_equal(
+        binary_mask, restored_binary_mask
+    ), "Incorrect bbox encoding! Please fix the implementation"
+    print("Bounding box conversion test passed.")
+
+
 if __name__ == "__main__":
     print("Running tests . . .")
     # Example usage: ENCODING
@@ -124,3 +164,4 @@ if __name__ == "__main__":
     )
     test_rle(binary_mask)
     test_polygon(binary_mask)
+    test_bbox(binary_mask)
