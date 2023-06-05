@@ -1,8 +1,8 @@
 ### Custom
 
 # data folders
-raw_data/
-dataset*/
+raw_data*
+dataset*
 
 
 ### Template
