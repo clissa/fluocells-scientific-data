@@ -21,6 +21,8 @@ FLUOCELLS_PATH = Path(SCRIPT_PATH).parent.absolute()
 
 sys.path.append(str(FLUOCELLS_PATH))
 
+import json
+import pickle
 import numpy as np
 from pycocotools import mask as maskUtils
 from pycocotools import coco as cocoUtils
@@ -29,6 +31,8 @@ import xml.etree.ElementTree as ET
 import cv2
 from skimage.measure import regionprops, label
 from matplotlib import pyplot as plt
+
+from fluocells.config import DATA_PATH
 
 
 # RLE
@@ -54,8 +58,8 @@ def rle_to_binary_mask(rle_encoding, img_height, img_width):
 
 def save_rle_encoding(rle_encoding, save_path):
     # Save RLE encoding to a file
-    with open(save_path, "w") as file:
-        file.write(rle_encoding)
+    with open(save_path, "wb") as file:
+        pickle.dump(rle_encoding, file)
 
 
 # TODO
@@ -163,6 +167,92 @@ def binary_mask_to_count(binary_mask):
         binary_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
     return len(contours)
+
+
+# Pascal VOC format
+def get_pascal_voc_annotations(binary_mask, mask_relative_path):
+    # Convert binary mask to annotations
+    polygons = binary_mask_to_polygon(binary_mask)
+    bboxes = binary_mask_to_bbox(binary_mask)
+    dots = binary_mask_to_dots(binary_mask)
+    object_count = binary_mask_to_count(binary_mask)
+
+    # Create Pascal VOC annotation XML structure
+    dataset_folder = mask_relative_path.split("/")[1]
+    annotation = ET.Element("annotation")
+    ET.SubElement(annotation, "folder").text = dataset_folder
+    ET.SubElement(annotation, "filename").text = mask_relative_path.split("/")[-1]
+    ET.SubElement(annotation, "path").text = mask_relative_path
+
+    source = ET.SubElement(annotation, "source")
+    ET.SubElement(source, "database").text = "AMS_Acta"
+
+    version = ET.SubElement(annotation, "version")
+    version.text = "v1_6"
+
+    size = ET.SubElement(annotation, "size")
+    ET.SubElement(size, "width").text = str(binary_mask.shape[1])
+    ET.SubElement(size, "height").text = str(binary_mask.shape[0])
+    ET.SubElement(size, "depth").text = "1"
+
+    segmented = ET.SubElement(annotation, "segmented").text = "Manually"
+
+    # Add polygon annotations
+    object_class = "nucleus" if dataset_folder == "green" else "citoplasm"
+    for polygon in polygons:
+        object_elem = ET.SubElement(annotation, "object")
+        ET.SubElement(object_elem, "name").text = object_class
+        # ET.SubElement(object_elem, "pose").text = "Unspecified"
+        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
+        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
+
+        polygon_elem = ET.SubElement(object_elem, "polygon")
+        for point in polygon:
+            x, y = point
+            point_elem = ET.SubElement(polygon_elem, "pt")
+            ET.SubElement(point_elem, "x").text = str(x)
+            ET.SubElement(point_elem, "y").text = str(y)
+
+    # Add bounding box annotations
+    for bbox in bboxes:
+        object_elem = ET.SubElement(annotation, "object")
+        ET.SubElement(object_elem, "name").text = object_class
+        # ET.SubElement(object_elem, "pose").text = "Unspecified"
+        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
+        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
+
+        bndbox_elem = ET.SubElement(object_elem, "bndbox")
+        xmin, ymin, width, height = bbox
+        ET.SubElement(bndbox_elem, "xmin").text = str(xmin)
+        ET.SubElement(bndbox_elem, "ymin").text = str(ymin)
+        ET.SubElement(bndbox_elem, "xmax").text = str(xmin + width)
+        ET.SubElement(bndbox_elem, "ymax").text = str(ymin + height)
+
+    # Add dot annotations
+    for dot in dots:
+        object_elem = ET.SubElement(annotation, "object")
+        ET.SubElement(object_elem, "name").text = "object_class"
+        # ET.SubElement(object_elem, "pose").text = "Unspecified"
+        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
+        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
+
+        dot_elem = ET.SubElement(object_elem, "dot")
+        ET.SubElement(dot_elem, "x").text = str(dot[0])
+        ET.SubElement(dot_elem, "y").text = str(dot[1])
+
+    # Add count annotation
+    count_elem = ET.SubElement(annotation, "count")
+    count_elem.text = str(object_count)
+
+    # Create an ElementTree object from the annotation XML structure
+    tree = ET.ElementTree(annotation)
+
+    return tree
+
+
+def save_pascal_voc_annotations(tree, outpath):
+    # Save the Pascal VOC annotation to a file
+    tree.write(outpath)
 
 
 # TESTS
