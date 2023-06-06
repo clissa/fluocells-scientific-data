@@ -77,18 +77,24 @@ def sample_contour_points(contour, max_points):
     return sampled_contour
 
 
-def binary_mask_to_polygon(binary_mask, max_points=None):
-    # Convert binary mask to polygon annotation
+def get_object_contours_(binary_mask, max_points=None):
     contours, _ = cv2.findContours(
         binary_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
-    polygons = []
-    for contour in contours:
+    for i, contour in enumerate(contours):
         contour = contour.squeeze(axis=1)
 
         if max_points is not None and len(contour) > max_points:
             contour = sample_contour_points(contour, max_points)
+        contours[i] = contour
+    return contours
 
+
+def binary_mask_to_polygon(binary_mask, max_points=None):
+    # Convert binary mask to polygon annotation
+    contours = get_object_contours_(binary_mask, max_points)
+    polygons = []
+    for contour in contours:
         # convert from np.int32 to int to avoid json serialization issues
         polygon = [(int(point[0]), int(point[1])) for point in contour]
         polygons.append(polygon)
