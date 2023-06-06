@@ -24,6 +24,7 @@ sys.path.append(str(FLUOCELLS_PATH))
 import json
 import pickle
 import numpy as np
+from datetime import datetime
 from pycocotools import mask as maskUtils
 from pycocotools import coco as cocoUtils
 import xml.etree.ElementTree as ET
@@ -88,7 +89,8 @@ def binary_mask_to_polygon(binary_mask, max_points=None):
         if max_points is not None and len(contour) > max_points:
             contour = sample_contour_points(contour, max_points)
 
-        polygon = [(point[0], point[1]) for point in contour]
+        # convert from np.int32 to int to avoid json serialization issues
+        polygon = [(int(point[0]), int(point[1])) for point in contour]
         polygons.append(polygon)
     return polygons
 
@@ -133,15 +135,19 @@ def bbox_to_binary_mask(boxes, image_shape):
 
 
 # DOT ANNOTATIONS
-def binary_mask_to_dots(binary_mask):
+def get_object_properties_(binary_mask):
     # Find contours in the binary mask: skimage seems more robust than cv2 for small objects
     labeled_mask = label(binary_mask.astype(np.uint8))
-    region_properties = regionprops(labeled_mask)
+    return regionprops(labeled_mask)
+    
+    
+def binary_mask_to_dots(binary_mask):
+    regions = get_object_properties_(binary_mask)
 
     # Extract center coordinates for each object
     dots = []
-    for prop in region_properties:
-        centroid = prop.centroid
+    for region_properties in regions:
+        centroid = region_properties.centroid
         cX = int(centroid[1])
         cY = int(centroid[0])
         dots.append((cX, cY))
@@ -178,11 +184,13 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     object_count = binary_mask_to_count(binary_mask)
 
     # Create Pascal VOC annotation XML structure
-    dataset_folder = mask_relative_path.split("/")[1]
+    split = mask_relative_path.split("/")[1]
+    dataset_folder = mask_relative_path.split("/")[0]
+    image_path = mask_relative_path.replace("ground_truths/masks", "images")
     annotation = ET.Element("annotation")
-    ET.SubElement(annotation, "folder").text = dataset_folder
+    ET.SubElement(annotation, "split").text = split
     ET.SubElement(annotation, "filename").text = mask_relative_path.split("/")[-1]
-    ET.SubElement(annotation, "path").text = mask_relative_path
+    ET.SubElement(annotation, "path").text = image_path
 
     source = ET.SubElement(annotation, "source")
     ET.SubElement(source, "database").text = "AMS_Acta"
