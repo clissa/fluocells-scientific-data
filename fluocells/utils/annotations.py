@@ -268,6 +268,126 @@ def save_pascal_voc_annotations(tree, outpath):
     tree.write(outpath)
 
 
+# COCO format
+def get_coco_annotations(binary_mask, mask_relative_path):
+    # Convert binary mask to annotations
+    contours = get_object_contours_(binary_mask, max_points=N_POINTS)
+    object_count = len(contours)
+
+    split = mask_relative_path.split("/")[1]
+    dataset_folder = mask_relative_path.split("/")[0]
+    image_path = mask_relative_path.replace("ground_truths/masks", "images")
+    filename = mask_relative_path.split("/")[-1]
+    
+    categories = (
+        [
+            {
+                "id": 0,
+                "name": "bkgd",
+                "supercategory": "background",
+                "isthing": 0,
+                "color": "#00000000",
+            },
+            {
+                "id": 1,
+                "name": "c-FOS",
+                "supercategory": "nucleus",
+                "isthing": 1,
+                "color": "#c8b6ff",
+            },
+            {
+                "id": 1,
+                "name": "CTb",
+                "supercategory": "citoplasm",
+                "isthing": 1,
+                "color": "#ffddd2",
+            },
+            {
+                "id": 2,
+                "name": "Orx",
+                "supercategory": "citoplasm",
+                "isthing": 1,
+                "color": "#fff3b0",
+            },
+        ],
+    )
+    # Create COCO annotation structure
+    coco_annotation = {
+        "info": {
+            "year": 2023,
+            "version": "1.6",
+            "description": "Fluorescent Neuronal Cells",
+            "contributor": "Luca Clissa",
+            "url": "<CHECK-AMS-ACTA-DOI>",  # TODO
+            "date_created": datetime.today().strftime("%Y-%m-%d"),
+        },
+        "images": [],
+        "annotations": [],
+        "licenses": [
+            {
+                "id": 1,
+                "name": "CC-BY-SA 4.0",
+                "url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
+            },
+        ],
+    }
+
+    # Create COCO image entry
+    image_entry = {
+        "id": filename.split(".")[0],  # Set your own image ID here
+        "width": binary_mask.shape[1],
+        "height": binary_mask.shape[0],
+        "file_name": filename,
+        "split": split,
+        "path": image_path,
+        "license": 1,  # Set your own license ID here
+        # "date_captured": "2023-06-06" #TODO: get from metadata ?
+    }
+    coco_annotation["images"].append(image_entry)
+
+    # Add annotations for each image
+    object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
+    annotation_entry = {
+        # "id": filename.split(".")[0],  # Set your own object ID here
+        "image_id": filename.split(".")[0],  # Set the corresponding image ID
+        "category_id": object_class_id,
+        "segmentation": [], # [x, y] points
+        "bbox": [], # [xmin, ymin, width, height]
+        "area": [],
+        "dots": [], # xcenter, ycenter
+        "count": object_count,
+        "iscrowd": 0 # currently annotations are uninterrupted and non-overlapping
+    }
+
+    # Add annotations
+    for contour in contours:
+        
+        # Add polygon annotations
+        polygon = get_polygon_from_contour_(contour)
+        annotation_entry["segmentation"].append(polygon)
+
+        # Add bounding box annotations
+        xmin, ymin, width, height = cv2.boundingRect(contour)
+        annotation_entry["bbox"].append([xmin, ymin, width, height])
+
+        # Add dots annotations 
+        cX, cY = get_centroid_from_contour_(contour)    
+        annotation_entry["dots"].append((cX, cY))
+
+        # Add objects area
+        annotation_entry["area"].append(cv2.contourArea(contour))
+
+    coco_annotation["annotations"].append(annotation_entry)
+    
+    return coco_annotation
+
+
+def save_coco_annotations(coco_dict, outpath):
+    # Save the COCO annotation to a file
+    with open(outpath, "w") as file:
+        json.dump(coco_dict, file)
+        
+        
 # TESTS
 def test_rle(binary_mask):
     rle_encoding = binary_mask_to_rle(binary_mask)
