@@ -269,16 +269,7 @@ def save_pascal_voc_annotations(tree, outpath):
 
 
 # COCO format
-def get_coco_annotations(binary_mask, mask_relative_path):
-    # Convert binary mask to annotations
-    contours = get_object_contours_(binary_mask, max_points=N_POINTS)
-    object_count = len(contours)
-
-    split = mask_relative_path.split("/")[1]
-    dataset_folder = mask_relative_path.split("/")[0]
-    image_path = mask_relative_path.replace("ground_truths/masks", "images")
-    filename = mask_relative_path.split("/")[-1]
-    
+def initialize_coco_dict():
     categories = (
         [
             {
@@ -329,8 +320,21 @@ def get_coco_annotations(binary_mask, mask_relative_path):
                 "name": "CC-BY-SA 4.0",
                 "url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
             },
-        ],
+        ]
     }
+    return coco_annotation
+
+def get_coco_annotations(binary_mask, mask_relative_path):
+    # Convert binary mask to annotations
+    contours = get_object_contours_(binary_mask, max_points=N_POINTS)
+    object_count = len(contours)
+
+    split = mask_relative_path.split("/")[1]
+    dataset_folder = mask_relative_path.split("/")[0]
+    image_path = mask_relative_path.replace("ground_truths/masks", "images")
+    filename = mask_relative_path.split("/")[-1]
+    
+    coco_annotation = initialize_coco_dict()
 
     # Create COCO image entry
     image_entry = {
