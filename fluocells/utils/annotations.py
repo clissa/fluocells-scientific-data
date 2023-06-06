@@ -30,10 +30,12 @@ from pycocotools import coco as cocoUtils
 import xml.etree.ElementTree as ET
 
 import cv2
-from skimage.measure import regionprops, label
 from matplotlib import pyplot as plt
 
 from fluocells.config import DATA_PATH
+
+
+N_POINTS = 50
 
 
 # RLE
@@ -81,13 +83,19 @@ def get_object_contours_(binary_mask, max_points=None):
     contours, _ = cv2.findContours(
         binary_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
+    sampled_contours = list(contours)
     for i, contour in enumerate(contours):
         contour = contour.squeeze(axis=1)
 
         if max_points is not None and len(contour) > max_points:
             contour = sample_contour_points(contour, max_points)
-        contours[i] = contour
-    return contours
+        sampled_contours[i] = contour
+    return sampled_contours
+
+
+def get_polygon_from_contour_(contour):
+    # convert from np.int32 to int to avoid json serialization issues
+    return [(int(point[0]), int(point[1])) for point in contour]
 
 
 def binary_mask_to_polygon(binary_mask, max_points=None):
@@ -95,8 +103,7 @@ def binary_mask_to_polygon(binary_mask, max_points=None):
     contours = get_object_contours_(binary_mask, max_points)
     polygons = []
     for contour in contours:
-        # convert from np.int32 to int to avoid json serialization issues
-        polygon = [(int(point[0]), int(point[1])) for point in contour]
+        polygon = get_polygon_from_contour_(contour)
         polygons.append(polygon)
     return polygons
 
@@ -141,24 +148,16 @@ def bbox_to_binary_mask(boxes, image_shape):
 
 
 # DOT ANNOTATIONS
-def get_object_properties_(binary_mask):
-    # Find contours in the binary mask: skimage seems more robust than cv2 for small objects
-    labeled_mask = label(binary_mask.astype(np.uint8))
-    return regionprops(labeled_mask)
-    
-    
+def get_centroid_from_contour_(contour):
+    M = cv2.moments(contour)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+    return (cX, cY)
+
+
 def binary_mask_to_dots(binary_mask):
-    regions = get_object_properties_(binary_mask)
-
-    # Extract center coordinates for each object
-    dots = []
-    for region_properties in regions:
-        centroid = region_properties.centroid
-        cX = int(centroid[1])
-        cY = int(centroid[0])
-        dots.append((cX, cY))
-
-    return dots
+    contours = get_object_contours_(binary_mask)
+    return [get_centroid_from_contour_(contour) for contour in contours]
 
 
 def dots_to_binary_mask(dots, image_shape):
@@ -331,5 +330,5 @@ if __name__ == "__main__":
     test_rle(binary_mask)
     test_polygon(binary_mask)
     test_bbox(binary_mask)
-    test_dots(binary_mask)
+    test_dots(binary_mask) #TODO: fix `ZeroDivisionError: float division by zero`
     test_count(binary_mask)
