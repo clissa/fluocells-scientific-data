@@ -33,11 +33,40 @@ import cv2
 from skimage import measure
 from matplotlib import pyplot as plt
 
-from fluocells.config import DATA_PATH
+from fluocells.config import DATA_PATH, METADATA
 
 
 N_POINTS = 50
-
+CATEGORIES = (
+        {
+            "id": 0,
+            "name": "bkgd",
+            "supercategory": "background",
+            "isthing": 0,
+            "color": "#00000000",
+        },
+        {
+            "id": 1,
+            "name": "c-FOS",
+            "supercategory": "nucleus",
+            "isthing": 1,
+            "color": "#c8b6ff",
+        },
+        {
+            "id": 2,
+            "name": "CTb",
+            "supercategory": "citoplasm",
+            "isthing": 1,
+            "color": "#ffddd2",
+        },
+        {
+            "id": 3,
+            "name": "Orx",
+            "supercategory": "citoplasm",
+            "isthing": 1,
+            "color": "#fff3b0",
+        },
+)
 
 # RLE
 def binary_mask_to_rle(binary_mask):
@@ -220,26 +249,28 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
 
     source = ET.SubElement(annotation, "source")
     ET.SubElement(source, "database").text = "AMS_Acta"
+    ET.SubElement(source, "url").text = METADATA['data_url']
 
     version = ET.SubElement(annotation, "version")
-    version.text = "v1_6"
+    version.text = METADATA['current_version'] #TODO: update with release version!
 
     size = ET.SubElement(annotation, "size")
     ET.SubElement(size, "width").text = str(binary_mask.shape[1])
     ET.SubElement(size, "height").text = str(binary_mask.shape[0])
     ET.SubElement(size, "depth").text = "1"
 
-    segmented = ET.SubElement(annotation, "segmented").text = "Manually"
+    #TODO: retrieve from annotations metadata on Pandora
+    segmented = ET.SubElement(annotation, "segmentation_type").text = "manual" 
 
     # Add polygon annotations
-    object_class = "nucleus" if dataset_folder == "green" else "citoplasm"
+    # object_class = "nucleus" if dataset_folder == "green" else "citoplasm"
+    object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
+    object_elem = ET.SubElement(annotation, "object")
+    ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id]['supercategory']
+    # ET.SubElement(object_elem, "pose").text = "Unspecified"
+    # ET.SubElement(object_elem, "truncated").text = "Unspecified"
+    # ET.SubElement(object_elem, "difficult").text = "Unspecified"
     for polygon in polygons:
-        object_elem = ET.SubElement(annotation, "object")
-        ET.SubElement(object_elem, "name").text = object_class
-        # ET.SubElement(object_elem, "pose").text = "Unspecified"
-        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
-        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
-
         polygon_elem = ET.SubElement(object_elem, "polygon")
         for point in polygon:
             x, y = point
@@ -249,12 +280,6 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
 
     # Add bounding box annotations
     for bbox in bboxes:
-        object_elem = ET.SubElement(annotation, "object")
-        ET.SubElement(object_elem, "name").text = object_class
-        # ET.SubElement(object_elem, "pose").text = "Unspecified"
-        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
-        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
-
         bndbox_elem = ET.SubElement(object_elem, "bndbox")
         xmin, ymin, width, height = bbox
         ET.SubElement(bndbox_elem, "xmin").text = str(xmin)
@@ -264,12 +289,6 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
 
     # Add dot annotations
     for dot in dots:
-        object_elem = ET.SubElement(annotation, "object")
-        ET.SubElement(object_elem, "name").text = "object_class"
-        # ET.SubElement(object_elem, "pose").text = "Unspecified"
-        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
-        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
-
         dot_elem = ET.SubElement(object_elem, "dot")
         ET.SubElement(dot_elem, "x").text = str(dot[0])
         ET.SubElement(dot_elem, "y").text = str(dot[1])
@@ -291,46 +310,14 @@ def save_pascal_voc_annotations(tree, outpath):
 
 # COCO format
 def initialize_coco_dict():
-    categories = (
-        [
-            {
-                "id": 0,
-                "name": "bkgd",
-                "supercategory": "background",
-                "isthing": 0,
-                "color": "#00000000",
-            },
-            {
-                "id": 1,
-                "name": "c-FOS",
-                "supercategory": "nucleus",
-                "isthing": 1,
-                "color": "#c8b6ff",
-            },
-            {
-                "id": 1,
-                "name": "CTb",
-                "supercategory": "citoplasm",
-                "isthing": 1,
-                "color": "#ffddd2",
-            },
-            {
-                "id": 2,
-                "name": "Orx",
-                "supercategory": "citoplasm",
-                "isthing": 1,
-                "color": "#fff3b0",
-            },
-        ],
-    )
     # Create COCO annotation structure
     coco_annotation = {
         "info": {
             "year": 2023,
-            "version": "1.6",
-            "description": "Fluorescent Neuronal Cells",
-            "contributor": "Luca Clissa",
-            "url": "<CHECK-AMS-ACTA-DOI>",  # TODO
+            "version": METADATA['current_version'],
+            "description": METADATA['dataset_name'],
+            "contributor": ", ".join(METADATA['contributors']),
+            "url": METADATA['data_url'],  #TODO: get doi url
             "date_created": datetime.today().strftime("%Y-%m-%d"),
         },
         "images": [],
