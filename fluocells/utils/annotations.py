@@ -24,16 +24,21 @@ sys.path.append(str(FLUOCELLS_PATH))
 import json
 import pickle
 import numpy as np
+import pandas as pd
+from pandas.core.groupby.generic import DataFrameGroupBy
 from datetime import datetime
 from pycocotools import mask as maskUtils
 from pycocotools import coco as cocoUtils
 import xml.etree.ElementTree as ET
 
 import cv2
-from skimage import measure
+from PIL import Image
+from skimage import measure, io
 from matplotlib import pyplot as plt
+from typing import List, Tuple
 
 from fluocells.config import DATA_PATH, METADATA
+from fluocells.utils.data import get_image_name_relative_path, get_mask_relative_path
 
 
 N_POINTS = 50
@@ -79,12 +84,12 @@ def binary_mask_to_rle(binary_mask):
     return encoded_mask
 
 
-def rle_to_binary_mask(rle_encoding, img_height, img_width):
+def rle_to_binary_mask(rle_encoding, image_height, image_width):
     # Convert RLE encoding to binary mask
     binary_mask = maskUtils.decode(rle_encoding)
 
     # Reshape and pad the binary mask to match the image dimensions
-    binary_mask = np.reshape(binary_mask, (img_height, img_width), order="F")
+    binary_mask = np.reshape(binary_mask, (image_height, image_width), order="F")
 
     # Return binary mask
     return binary_mask
@@ -414,11 +419,128 @@ def save_coco_annotations(coco_dict, outpath):
         json.dump(coco_dict, file)
 
 
+
+def _convert_to_VIA_polygon(contour: List):
+    """
+    Transform object's contour coordinates in the mask to VGG VIA polygon format for the csv annotation.
+
+    :param contour: list of points coordinates (i.e.: [[x1, y1], [x2, y2], ...], where x*, y* are expressed as pixel
+    in the mask
+    :return:
+    """
+    all_x, all_y = list(), list()
+    for point in contour:
+        all_x.append(point[0])
+        all_y.append(point[1])
+
+    return all_x, all_y
+
+
+def _convert_from_VIA_polygon(all_x: List, all_y: List) -> List[Tuple[int, int]]:
+    """
+    Transform object's coordinates from Visual Image Annotator (VIA) polygon format to pixel coordinates for the actual mask.
+
+    :param all_x: list of x coordinates of the contour points, expressed in absolute shape value
+    :param all_y: list of x coordinates of the contour points, expressed in absolute shape value
+    :return: list of object contour coordinats in (x, y) format
+    """
+    converted_points = [(int(x), int(y)) for x, y in zip(all_x, all_y)]
+    return converted_points
+
+
+def _get_contour_from_VIA_polygon(all_x: List, all_y: List):
+    polygon = _convert_from_VIA_polygon(all_x, all_y)
+    return np.array(polygon, dtype=np.int32)
+
+
+def load_VIA_annotations(annotations_path: Path) -> pd.DataFrame:
+    annotations_df = pd.read_csv(annotations_path)
+    # Convert string literals to dictionaries
+    annotations_df["file_attributes"] = annotations_df["file_attributes"].apply(
+        json.loads
+    )
+    annotations_df["region_shape_attributes"] = annotations_df[
+        "region_shape_attributes"
+    ].apply(json.loads)
+    annotations_df["region_attributes"] = annotations_df["region_attributes"].apply(
+        json.loads
+    )
+    return annotations_df
+
+
+def _VIA_annotation_to_binary_mask(
+    task_annotation: DataFrameGroupBy, mask_shape: Tuple[int, int]
+) -> np.ndarray[np.uint8]:
+    """
+    Convert Visual Image Annotator (VIA) annotation to binary mask.
+
+    :param task_annotation: list containing VIA annotations for given task (image)
+    :param mask_shape: tuple with (image_height, image_width)
+    :return: reconstructed binary mask [0, 255] or None if impossible to reconstruct
+    """
+    binary_mask = np.zeros(mask_shape, dtype=np.uint8)
+    # task_annotation = annotation_tasks.get_group('400.png')
+
+    if len(task_annotation) >= 1:
+        # image_shape = (image_height, image_width)
+
+        for object_ in task_annotation.region_shape_attributes:
+            # skip if empty image (no cells)
+            if "all_points_x" not in object_:
+                continue
+            # polygon = np.array(
+            #     _convert_from_VIA_polygon(object_["all_points_x"], object_["all_points_y"])
+            # )
+            contour = _get_contour_from_VIA_polygon(object_["all_points_x"], object_["all_points_y"])
+            cv2.fillPoly(binary_mask, [contour], 1)
+            
+            # obj_mask = draw.polygon2mask(mask_shape, polygon)  # dtype: bool
+            # NOTE: the logic breaks with overlapping objects, in particular:
+            # - adding the objects produces a max_value higher than 1
+            # - this is fixed later with the thresholding, however overlapping objects are no longer distinct
+            # binary_mask += obj_mask
+
+    # transform 0-1 binary to 0-255 range
+    binary_mask[binary_mask > 0] = 255
+
+    return binary_mask
+
+
+def _save_converted_mask(binary_mask: np.ndarray, outpath: Path):
+    # print(f"Saving binary mask to:\n{outpath}")
+    io.imsave(outpath, binary_mask, check_contrast=False)
+
+
+def apply_VIA_annotation_to_binary_mask(
+    task_annotation: DataFrameGroupBy,
+    data_basepath: Path,
+    outpath: Path,
+    map_df: pd.DataFrame,
+):
+    # get image shape and outpaths
+    image_name = task_annotation.filename.values[0]
+    image_relative_path = get_image_name_relative_path(
+        map_df.loc[map_df.image_name == image_name]
+    )
+    image_path = data_basepath / image_relative_path
+    mask_relative_path = get_mask_relative_path(image_relative_path)
+    masks_path = outpath / mask_relative_path
+    masks_path.mkdir(exist_ok=True, parents=True)
+
+    with Image.open(image_path / image_name) as image:
+        image_width, image_height = image.size
+    mask_shape = (image_height, image_width)
+
+    # get binary mask and save it
+    binary_mask = _VIA_annotation_to_binary_mask(task_annotation, mask_shape)
+    _save_converted_mask(binary_mask, masks_path / image_name)
+
+
 # TESTS
 def test_rle(binary_mask):
     rle_encoding = binary_mask_to_rle(binary_mask)
-    img_height, img_width = binary_mask.shape
-    reco_binary_mask = rle_to_binary_mask(rle_encoding, img_height, img_width)
+    image_height, image_width = binary_mask.shape
+    reco_binary_mask = rle_to_binary_mask(rle_encoding, image_height, image_width)
     assert np.array_equal(
         binary_mask, reco_binary_mask
     ), "Incorrect RLE encoding! Please fix the implementation"
