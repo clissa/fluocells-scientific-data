@@ -266,20 +266,25 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     # TODO: retrieve from annotations metadata on Pandora
     _ = ET.SubElement(annotation, "segmentation_type").text = "_get_segmentation_type(filename)"
 
-    # Add polygon annotations
-    # object_class = "nucleus" if dataset_folder == "green" else "citoplasm"
-    object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
-    object_elem = ET.SubElement(annotation, "object")
-    ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id][
-        "name"
-    ]
-    ET.SubElement(object_elem, "marked_structure").text = CATEGORIES[object_class_id][
-        "supercategory"
-    ]
-    # ET.SubElement(object_elem, "pose").text = "Unspecified"
-    # ET.SubElement(object_elem, "truncated").text = "Unspecified"
-    # ET.SubElement(object_elem, "difficult").text = "Unspecified"
-    for polygon in polygons:
+    # Add count annotation
+    count_elem = ET.SubElement(annotation, "count")
+    count_elem.text = str(object_count)
+    
+    # Add objects
+    for polygon, bbox, dot in zip(polygons, bboxes, dots):
+        object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
+        object_elem = ET.SubElement(annotation, "object")
+        ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id][
+            "name"
+        ]
+        ET.SubElement(object_elem, "marked_structure").text = CATEGORIES[object_class_id][
+            "supercategory"
+        ]
+        # ET.SubElement(object_elem, "pose").text = "Unspecified"
+        # ET.SubElement(object_elem, "truncated").text = "Unspecified"
+        # ET.SubElement(object_elem, "difficult").text = "Unspecified"
+
+        # Add bounding box annotations
         polygon_elem = ET.SubElement(object_elem, "polygon")
         for point in polygon:
             x, y = point
@@ -287,8 +292,7 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
             ET.SubElement(point_elem, "x").text = str(x)
             ET.SubElement(point_elem, "y").text = str(y)
 
-    # Add bounding box annotations
-    for bbox in bboxes:
+        # Add bounding box annotations
         bndbox_elem = ET.SubElement(object_elem, "bndbox")
         xmin, ymin, width, height = bbox
         ET.SubElement(bndbox_elem, "xmin").text = str(xmin)
@@ -296,15 +300,10 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
         ET.SubElement(bndbox_elem, "xmax").text = str(xmin + width)
         ET.SubElement(bndbox_elem, "ymax").text = str(ymin + height)
 
-    # Add dot annotations
-    for dot in dots:
+        # Add dot annotations
         dot_elem = ET.SubElement(object_elem, "dot")
         ET.SubElement(dot_elem, "x").text = str(dot[0])
         ET.SubElement(dot_elem, "y").text = str(dot[1])
-
-    # Add count annotation
-    count_elem = ET.SubElement(annotation, "count")
-    count_elem.text = str(object_count)
 
     # Create an ElementTree object from the annotation XML structure
     tree = ET.ElementTree(annotation)
