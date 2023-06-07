@@ -38,35 +38,36 @@ from fluocells.config import DATA_PATH, METADATA
 
 N_POINTS = 50
 CATEGORIES = (
-        {
-            "id": 0,
-            "name": "bkgd",
-            "supercategory": "background",
-            "isthing": 0,
-            "color": "#00000000",
-        },
-        {
-            "id": 1,
-            "name": "c-FOS",
-            "supercategory": "nucleus",
-            "isthing": 1,
-            "color": "#c8b6ff",
-        },
-        {
-            "id": 2,
-            "name": "CTb",
-            "supercategory": "citoplasm",
-            "isthing": 1,
-            "color": "#ffddd2",
-        },
-        {
-            "id": 3,
-            "name": "Orx",
-            "supercategory": "citoplasm",
-            "isthing": 1,
-            "color": "#fff3b0",
-        },
+    {
+        "id": 0,
+        "name": "bkgd",
+        "supercategory": "background",
+        "isthing": 0,
+        "color": "#00000000",
+    },
+    {
+        "id": 1,
+        "name": "c-FOS",
+        "supercategory": "nucleus",
+        "isthing": 1,
+        "color": "#c8b6ff",
+    },
+    {
+        "id": 2,
+        "name": "CTb",
+        "supercategory": "citoplasm",
+        "isthing": 1,
+        "color": "#ffddd2",
+    },
+    {
+        "id": 3,
+        "name": "Orx",
+        "supercategory": "citoplasm",
+        "isthing": 1,
+        "color": "#fff3b0",
+    },
 )
+
 
 # RLE
 def binary_mask_to_rle(binary_mask):
@@ -126,7 +127,7 @@ def _get_object_contours(binary_mask, max_points=None):
 def _get_object_regions(binary_mask):
     labels_mask = measure.label(binary_mask)
     regions = measure.regionprops(labels_mask)
-    
+
     # reverse for compatibility with opencv contours ordering
     regions.reverse()
     return regions
@@ -207,7 +208,9 @@ def binary_mask_to_opencv_dots(binary_mask):
 
 def binary_mask_to_skimage_dots(binary_mask):
     regions = _get_object_regions(binary_mask)
-    return [_get_centroid_from_region(region_properties) for region_properties in regions]
+    return [
+        _get_centroid_from_region(region_properties) for region_properties in regions
+    ]
 
 
 def dots_to_binary_mask(dots, image_shape):
@@ -249,24 +252,26 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
 
     source = ET.SubElement(annotation, "source")
     ET.SubElement(source, "database").text = "AMS_Acta"
-    ET.SubElement(source, "url").text = METADATA['data_url']
+    ET.SubElement(source, "url").text = METADATA["data_url"]
 
     version = ET.SubElement(annotation, "version")
-    version.text = METADATA['current_version'] #TODO: update with release version!
+    version.text = METADATA["current_version"]  # TODO: update with release version!
 
     size = ET.SubElement(annotation, "size")
     ET.SubElement(size, "width").text = str(binary_mask.shape[1])
     ET.SubElement(size, "height").text = str(binary_mask.shape[0])
     ET.SubElement(size, "depth").text = "1"
 
-    #TODO: retrieve from annotations metadata on Pandora
-    segmented = ET.SubElement(annotation, "segmentation_type").text = "manual" 
+    # TODO: retrieve from annotations metadata on Pandora
+    segmented = ET.SubElement(annotation, "segmentation_type").text = "manual"
 
     # Add polygon annotations
     # object_class = "nucleus" if dataset_folder == "green" else "citoplasm"
     object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
     object_elem = ET.SubElement(annotation, "object")
-    ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id]['supercategory']
+    ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id][
+        "supercategory"
+    ]
     # ET.SubElement(object_elem, "pose").text = "Unspecified"
     # ET.SubElement(object_elem, "truncated").text = "Unspecified"
     # ET.SubElement(object_elem, "difficult").text = "Unspecified"
@@ -314,10 +319,10 @@ def initialize_coco_dict():
     coco_annotation = {
         "info": {
             "year": 2023,
-            "version": METADATA['current_version'],
-            "description": METADATA['dataset_name'],
-            "contributor": ", ".join(METADATA['contributors']),
-            "url": METADATA['data_url'],  #TODO: get doi url
+            "version": METADATA["current_version"],
+            "description": METADATA["dataset_name"],
+            "contributor": ", ".join(METADATA["contributors"]),
+            "url": METADATA["data_url"],  # TODO: get doi url
             "date_created": datetime.today().strftime("%Y-%m-%d"),
         },
         "images": [],
@@ -328,9 +333,10 @@ def initialize_coco_dict():
                 "name": "CC-BY-SA 4.0",
                 "url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
             },
-        ]
+        ],
     }
     return coco_annotation
+
 
 def get_coco_annotations(binary_mask, mask_relative_path):
     # Convert binary mask to annotations
@@ -342,7 +348,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
     dataset_folder = mask_relative_path.split("/")[0]
     image_path = mask_relative_path.replace("ground_truths/masks", "images")
     filename = mask_relative_path.split("/")[-1]
-    
+
     coco_annotation = initialize_coco_dict()
 
     # Create COCO image entry
@@ -364,17 +370,16 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         # "id": filename.split(".")[0],  # Set your own object ID here
         "image_id": filename.split(".")[0],  # Set the corresponding image ID
         "category_id": object_class_id,
-        "segmentation": [], # [x, y] points
-        "bbox": [], # [xmin, ymin, width, height]
+        "segmentation": [],  # [x, y] points
+        "bbox": [],  # [xmin, ymin, width, height]
         "area": [],
-        "dots": [], # xcenter, ycenter
+        "dots": [],  # xcenter, ycenter
         "count": object_count,
-        "iscrowd": 0 # currently annotations are uninterrupted and non-overlapping
+        "iscrowd": 0,  # currently annotations are uninterrupted and non-overlapping
     }
 
     # Add annotations
     for contour, region_properties in zip(contours, regions):
-        
         # Add polygon annotations
         polygon = _get_polygon_from_contour(contour)
         annotation_entry["segmentation"].append(polygon)
@@ -383,8 +388,10 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         xmin, ymin, width, height = cv2.boundingRect(contour)
         annotation_entry["bbox"].append([xmin, ymin, width, height])
 
-        # Add dots annotations 
-        cX, cY = _get_centroid_from_region(region_properties) #_get_centroid_from_contour(contour)    
+        # Add dots annotations
+        cX, cY = _get_centroid_from_region(
+            region_properties
+        )  # _get_centroid_from_contour(contour)
         annotation_entry["dots"].append((cX, cY))
 
         # Add objects area
@@ -392,7 +399,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         annotation_entry["area"].append(int(region_properties.area))
 
     coco_annotation["annotations"].append(annotation_entry)
-    
+
     return coco_annotation
 
 
@@ -400,8 +407,8 @@ def save_coco_annotations(coco_dict, outpath):
     # Save the COCO annotation to a file
     with open(outpath, "w") as file:
         json.dump(coco_dict, file)
-        
-        
+
+
 # TESTS
 def test_rle(binary_mask):
     rle_encoding = binary_mask_to_rle(binary_mask)
