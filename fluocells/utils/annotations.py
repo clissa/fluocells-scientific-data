@@ -79,7 +79,7 @@ def sample_contour_points(contour, max_points):
     return sampled_contour
 
 
-def get_object_contours_(binary_mask, max_points=None):
+def _get_object_contours(binary_mask, max_points=None):
     contours, _ = cv2.findContours(
         binary_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
@@ -93,17 +93,17 @@ def get_object_contours_(binary_mask, max_points=None):
     return sampled_contours
 
 
-def get_polygon_from_contour_(contour):
+def _get_polygon_from_contour(contour):
     # convert from np.int32 to int to avoid json serialization issues
     return [(int(point[0]), int(point[1])) for point in contour]
 
 
 def binary_mask_to_polygon(binary_mask, max_points=None):
     # Convert binary mask to polygon annotation
-    contours = get_object_contours_(binary_mask, max_points)
+    contours = _get_object_contours(binary_mask, max_points)
     polygons = []
     for contour in contours:
-        polygon = get_polygon_from_contour_(contour)
+        polygon = _get_polygon_from_contour(contour)
         polygons.append(polygon)
     return polygons
 
@@ -148,7 +148,7 @@ def bbox_to_binary_mask(boxes, image_shape):
 
 
 # DOT ANNOTATIONS
-def get_centroid_from_contour_(contour):
+def _get_centroid_from_contour(contour):
     M = cv2.moments(contour)
     cX = int(M["m10"] / M["m00"])
     cY = int(M["m01"] / M["m00"])
@@ -156,8 +156,8 @@ def get_centroid_from_contour_(contour):
 
 
 def binary_mask_to_dots(binary_mask):
-    contours = get_object_contours_(binary_mask)
-    return [get_centroid_from_contour_(contour) for contour in contours]
+    contours = _get_object_contours(binary_mask)
+    return [_get_centroid_from_contour(contour) for contour in contours]
 
 
 def dots_to_binary_mask(dots, image_shape):
@@ -326,7 +326,7 @@ def initialize_coco_dict():
 
 def get_coco_annotations(binary_mask, mask_relative_path):
     # Convert binary mask to annotations
-    contours = get_object_contours_(binary_mask, max_points=N_POINTS)
+    contours = _get_object_contours(binary_mask, max_points=N_POINTS)
     object_count = len(contours)
 
     split = mask_relative_path.split("/")[1]
@@ -367,7 +367,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
     for contour in contours:
         
         # Add polygon annotations
-        polygon = get_polygon_from_contour_(contour)
+        polygon = _get_polygon_from_contour(contour)
         annotation_entry["segmentation"].append(polygon)
 
         # Add bounding box annotations
@@ -375,7 +375,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         annotation_entry["bbox"].append([xmin, ymin, width, height])
 
         # Add dots annotations 
-        cX, cY = get_centroid_from_contour_(contour)    
+        cX, cY = _get_centroid_from_contour(contour)    
         annotation_entry["dots"].append((cX, cY))
 
         # Add objects area
