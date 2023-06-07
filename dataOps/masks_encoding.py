@@ -1,10 +1,11 @@
 """
 This script transforms binary mask into several common annotation formats.
 
-Supproted formats include:
+Supprorted formats include:
     - RLE encoding
     - Pascal VOC: polygon, bndbox, dots, count + metadata
     - COCO: segmentation, bbox, area, dots, count, iscrowd
+    - VGG VIA: polygon
 
 Author: Luca Clissa <clissa@bo.infn.it>
 Created: 2023-06-05
@@ -34,6 +35,8 @@ from fluocells.utils.annotations import (
     get_coco_annotations,
     save_coco_annotations,
     initialize_coco_dict,
+    get_VIA_annotations,
+    initialize_VIA_dict,
 )
 
 
@@ -53,8 +56,11 @@ if __name__ == "__main__":
         voc_path.mkdir(exist_ok=True, parents=True)
         coco_path = mask_paths.parent / "COCO"
         coco_path.mkdir(exist_ok=True, parents=True)
+        via_path = mask_paths.parent / "VIA"
+        via_path.mkdir(exist_ok=True, parents=True)
 
         coco_dict = initialize_coco_dict()
+        via_dict = initialize_VIA_dict()
         for mask_path in tqdm(
             [*mask_paths.iterdir()], desc=f"{dataset}/{split} loop:", leave=False
         ):
@@ -68,7 +74,12 @@ if __name__ == "__main__":
             mask_coco_dict = get_coco_annotations(binary_mask, mask_relative_path)
             coco_dict["images"].extend(mask_coco_dict["images"])
             coco_dict["annotations"].extend(mask_coco_dict["annotations"])
+            mask_via_dict = get_VIA_annotations(binary_mask, mask_relative_path)
+            via_dict.update(mask_via_dict)
 
         save_coco_annotations(
             coco_dict, coco_path / f"annotations_{dataset}_{split}.json"
+        )
+        save_coco_annotations(
+            via_dict, via_path / f"annotations_{dataset}_{split}.json"
         )
