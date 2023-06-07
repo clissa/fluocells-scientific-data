@@ -19,14 +19,22 @@ import fluocells as fluo
 
 REPO_PATH = Path(fluo.__path__[0]).parent
 
+# metadata
+METADATA = dict(
+    dataset_name = "Fluorescent Neuronal Cells dataset",
+    data_url = "<CHECK-AMS-ACTA-DOI>",
+    contributors = ["Luca Clissa", "Roberto Morelli", "et al."],
+    current_version = "v1_6",
+)
+
+# reproducibility
 TEST_PCT = 0.25
 TRAINVAL_TEST_SEED = 10
 
 # data
 RAW_DATA_PATH = REPO_PATH / "raw_data"
 
-CURRENT_DATA_VERSION = "v1_6"
-DATA_PATH = REPO_PATH / f"dataset_{CURRENT_DATA_VERSION}"
+DATA_PATH = REPO_PATH / f"dataset_{METADATA['current_version']}"
 
 DATA_PATH_r = DATA_PATH / "red"
 DATA_PATH_y = DATA_PATH / "yellow"
