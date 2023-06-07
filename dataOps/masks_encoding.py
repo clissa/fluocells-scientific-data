@@ -33,7 +33,7 @@ from fluocells.utils.annotations import (
     get_pascal_voc_annotations,
     save_pascal_voc_annotations,
     get_coco_annotations,
-    save_coco_annotations,
+    save_json_annotations,
     initialize_coco_dict,
     get_VIA_annotations,
     initialize_VIA_dict,
@@ -77,9 +77,9 @@ if __name__ == "__main__":
             mask_via_dict = get_VIA_annotations(binary_mask, mask_relative_path)
             via_dict.update(mask_via_dict)
 
-        save_coco_annotations(
+        save_json_annotations(
             coco_dict, coco_path / f"annotations_{dataset}_{split}.json"
         )
-        save_coco_annotations(
+        save_json_annotations(
             via_dict, via_path / f"annotations_{dataset}_{split}.json"
         )

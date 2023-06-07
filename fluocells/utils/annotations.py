@@ -478,7 +478,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
     return coco_annotation
 
 
-def save_coco_annotations(coco_dict, outpath):
+def save_json_annotations(coco_dict, outpath):
     # Save the COCO annotation to a file
     with open(outpath, "w") as file:
         json.dump(coco_dict, file)
