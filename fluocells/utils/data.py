@@ -26,12 +26,135 @@ from skimage import io, measure
 from tqdm.auto import tqdm
 from typing import List, Literal, Union
 
-from fluocells.config import DATA_PATH, CURRENT_DATA_VERSION, DEBUG_PATH
+from fluocells.config import DATA_PATH, METADATA, DEBUG_PATH
 
 
 N_POINTS: int = 40
 
 MISSING = "unknown"
+
+
+def parse_animal(animal: str):
+    animal = animal.lower()
+    animal_type = "marvin" if animal.startswith("m") else "rat"
+    animal_idx = animal[3:] if animal.startswith("m") else animal[2:]
+    return animal_type, str(animal_idx)
+
+
+def format_slice_id(slice_id):
+    if slice_id == "u":
+        return MISSING
+    else:
+        return slice_id
+
+
+def parse_slice(slice: str):
+    if len(slice) > 3:
+        return (
+            format_slice_id(slice[1]),
+            format_slice_id(slice[3]),
+            format_slice_id(slice[5]),
+        )
+    else:
+        return MISSING, MISSING, MISSING
+
+
+def parse_sample(sample: str):
+    slice_start_idx = while_iter = -1
+    char_list = ["S", "C", "R"]
+    while slice_start_idx == -1:
+        while_iter += 1
+        slice_start_idx = sample.find(char_list[while_iter])
+        if while_iter >= 2:
+            return MISSING, MISSING, MISSING, MISSING, MISSING
+    animal_data = sample[:slice_start_idx]
+    slice_data = sample[slice_start_idx:]
+    if slice_data.startswith("CR"):
+        slice_data = "Cu" + slice_data[1:]
+    if while_iter == 1:
+        slice_data = char_list[0] + "u" + slice_data
+    if while_iter == 2:
+        slice_data = char_list[1] + "u" + slice_data
+    parsed_animal, parsed_slice = parse_animal(animal_data), parse_slice(slice_data)
+    return (
+        parsed_animal[0],
+        parsed_animal[1],
+        parsed_slice[0],
+        parsed_slice[1],
+        parsed_slice[2],
+    )
+
+
+def parse_region(region: str):
+    region = region.upper()
+    if region.endswith("L") or region.endswith("R"):
+        return region[:-1] + region[-1].lower()
+    else:
+        return region
+
+
+def parse_zoom(zoom: str):
+    return zoom if len(zoom) > 2 else zoom + "0x" if zoom else MISSING
+
+
+def parse_filename(fn):
+    parts = Path(fn).stem.split("_")
+    if len(parts) == 2:
+        animal_type, animal_idx, sample_idx, row, col = parse_sample(parts[0])
+        region = zoom = MISSING
+    elif len(parts) >= 3:
+        animal_type, animal_idx, sample_idx, row, col = parse_sample(parts[0])
+        region = parse_region(parts[1])
+        zoom = parse_zoom(parts[2])
+    else:
+        animal_type = animal_idx = sample_idx = row = col = region = zoom = MISSING
+    return animal_type, animal_idx, sample_idx, row, col, region, zoom
+
+
+EXTENSIONS = [".png", ".jpg", ".TIFF", ".TIF"]
+
+
+def get_all_paths(
+    source_path: Path, mode: Literal[None, "images", "masks"] = "images", exts=EXTENSIONS
+) -> tuple:
+    """Recursevely search for files with desired extension inside source_path.
+
+    Args:
+        source_path (Path): parent data folder
+        mode (Literal['images', 'masks'], optional): files folder. Either `images` or `masks`
+        exts (list, optional): accepted file extensions. Defaults to [".png", ".jpg", ".TIFF", ".TIF"].
+
+    Returns:
+        tuple: tuple of found images and ignored file extensions
+    """
+    ignored_extensions = list()
+    all_files_list = list()
+    for p in source_path.iterdir():
+        if p.is_dir():
+            print(f"\n{p.name} is a directory! continue searching...")
+            img_list, ignored = get_all_paths(p, mode=mode, exts=exts)
+            all_files_list.extend(img_list)
+            ignored_extensions.extend(ignored)
+        elif (mode is not None) & (mode != p.parent.name):
+            continue
+        elif p.suffix in exts:
+            all_files_list.append(p)
+        else:
+            ignored_extensions.append(p.suffix)
+    return all_files_list, set(ignored_extensions)
+
+
+def get_image_name_relative_path(
+    image_name_row: pd.DataFrame
+) -> str:
+    relative_path = "/".join(
+            [image_name_row.dataset.values[0], image_name_row.partition.values[0], "images"]
+        )
+    return relative_path
+
+
+def get_mask_relative_path(image_relative_path: str) -> str:
+    return image_relative_path.replace("images", "ground_truths/masks")
 
 
 def get_exif_bytes(image_path: Path) -> bytes:
@@ -156,125 +279,6 @@ def remove_noise_from_masks(
         outpath.mkdir(parents=True, exist_ok=True)
         io.imsave(outpath / p.name, mask, check_contrast=False)
     return
-
-
-def parse_animal(animal: str):
-    animal = animal.lower()
-    animal_type = "marvin" if animal.startswith("m") else "rat"
-    animal_idx = animal[3:] if animal.startswith("m") else animal[2:]
-    return animal_type, str(animal_idx)
-
-
-def format_slice_id(slice_id):
-    if slice_id == "u":
-        return MISSING
-    else:
-        return slice_id
-
-
-def parse_slice(slice: str):
-    if len(slice) > 3:
-        return (
-            format_slice_id(slice[1]),
-            format_slice_id(slice[3]),
-            format_slice_id(slice[5]),
-        )
-    else:
-        return MISSING, MISSING, MISSING
-
-
-def parse_sample(sample: str):
-    slice_start_idx = while_iter = -1
-    char_list = ["S", "C", "R"]
-    while slice_start_idx == -1:
-        while_iter += 1
-        slice_start_idx = sample.find(char_list[while_iter])
-        if while_iter >= 2:
-            return MISSING, MISSING, MISSING, MISSING, MISSING
-    animal_data = sample[:slice_start_idx]
-    slice_data = sample[slice_start_idx:]
-    if slice_data.startswith("CR"):
-        slice_data = "Cu" + slice_data[1:]
-    if while_iter == 1:
-        slice_data = char_list[0] + "u" + slice_data
-    if while_iter == 2:
-        slice_data = char_list[1] + "u" + slice_data
-    parsed_animal, parsed_slice = parse_animal(animal_data), parse_slice(slice_data)
-    return (
-        parsed_animal[0],
-        parsed_animal[1],
-        parsed_slice[0],
-        parsed_slice[1],
-        parsed_slice[2],
-    )
-
-
-def parse_region(region: str):
-    region = region.upper()
-    if region.endswith("L") or region.endswith("R"):
-        return region[:-1] + region[-1].lower()
-    else:
-        return region
-
-
-def parse_zoom(zoom: str):
-    return zoom if len(zoom) > 2 else zoom + "0x" if zoom else MISSING
-
-
-def parse_filename(fn):
-    parts = Path(fn).stem.split("_")
-    if len(parts) == 2:
-        animal_type, animal_idx, sample_idx, row, col = parse_sample(parts[0])
-        region = zoom = MISSING
-    elif len(parts) >= 3:
-        animal_type, animal_idx, sample_idx, row, col = parse_sample(parts[0])
-        region = parse_region(parts[1])
-        zoom = parse_zoom(parts[2])
-    else:
-        animal_type = animal_idx = sample_idx = row = col = region = zoom = MISSING
-    return animal_type, animal_idx, sample_idx, row, col, region, zoom
-
-
-EXTENSIONS = [".png", ".jpg", ".TIFF", ".TIF"]
-
-
-def get_all_paths(
-    source_path: Path, mode: Literal[None, "images", "masks"] = "images", exts=EXTENSIONS
-) -> tuple:
-    """Recursevely search for files with desired extension inside source_path.
-
-    Args:
-        source_path (Path): parent data folder
-        mode (Literal['images', 'masks'], optional): files folder. Either `images` or `masks`
-        exts (list, optional): accepted file extensions. Defaults to [".png", ".jpg", ".TIFF", ".TIF"].
-
-    Returns:
-        tuple: tuple of found images and ignored file extensions
-    """
-    ignored_extensions = list()
-    all_files_list = list()
-    for p in source_path.iterdir():
-        if p.is_dir():
-            print(f"\n{p.name} is a directory! continue searching...")
-            img_list, ignored = get_all_paths(p, mode=mode, exts=exts)
-            all_files_list.extend(img_list)
-            ignored_extensions.extend(ignored)
-        elif (mode is not None) & (mode != p.parent.name):
-            continue
-        elif p.suffix in exts:
-            all_files_list.append(p)
-        else:
-            ignored_extensions.append(p.suffix)
-    return all_files_list, set(ignored_extensions)
-
-
-def get_image_name_relative_path(
-    image_name_row: pd.DataFrame, mode: Literal["images", "masks"] = "images"
-) -> str:
-    relative_path = "/".join(
-            [image_name_row.dataset.values[0], image_name_row.partition.values[0], mode]
-        )
-    return relative_path
 
 
 def compute_masks_stats(masks_paths: List[Path]) -> pd.DataFrame:
