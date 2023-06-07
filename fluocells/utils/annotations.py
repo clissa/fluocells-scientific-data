@@ -244,6 +244,7 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     # Create Pascal VOC annotation XML structure
     split = mask_relative_path.split("/")[1]
     dataset_folder = mask_relative_path.split("/")[0]
+    filename = mask_relative_path.split("/")[-1]
     image_path = mask_relative_path.replace("ground_truths/masks", "images")
     annotation = ET.Element("annotation")
     ET.SubElement(annotation, "split").text = split
@@ -263,13 +264,16 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     ET.SubElement(size, "depth").text = "1"
 
     # TODO: retrieve from annotations metadata on Pandora
-    segmented = ET.SubElement(annotation, "segmentation_type").text = "manual"
+    _ = ET.SubElement(annotation, "segmentation_type").text = "_get_segmentation_type(filename)"
 
     # Add polygon annotations
     # object_class = "nucleus" if dataset_folder == "green" else "citoplasm"
     object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
     object_elem = ET.SubElement(annotation, "object")
     ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id][
+        "name"
+    ]
+    ET.SubElement(object_elem, "marked_structure").text = CATEGORIES[object_class_id][
         "supercategory"
     ]
     # ET.SubElement(object_elem, "pose").text = "Unspecified"
@@ -370,6 +374,8 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         # "id": filename.split(".")[0],  # Set your own object ID here
         "image_id": filename.split(".")[0],  # Set the corresponding image ID
         "category_id": object_class_id,
+        # TODO: retrieve from annotations metadata on Pandora
+        "segmentation_type": "_get_segmentation_type(filename)",
         "segmentation": [],  # [x, y] points
         "bbox": [],  # [xmin, ymin, width, height]
         "area": [],
