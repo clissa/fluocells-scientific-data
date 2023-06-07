@@ -21,6 +21,7 @@ FLUOCELLS_PATH = Path(SCRIPT_PATH).parent.absolute()
 
 sys.path.append(str(FLUOCELLS_PATH))
 
+import os
 import json
 import pickle
 import numpy as np
@@ -162,6 +163,73 @@ def polygon_to_binary_mask(polygons, image_shape):
     return binary_mask
 
 
+def _convert_to_VIA_polygon(contour: List):
+    """
+    Transform object's contour coordinates in the mask to VGG VIA polygon format for the csv annotation.
+
+    :param contour: list of points coordinates (i.e.: [[x1, y1], [x2, y2], ...], where x*, y* are expressed as pixel
+    in the mask
+    :return:
+    """
+    all_x, all_y = list(), list()
+    for point in contour:
+        all_x.append(int(point[1]))
+        all_y.append(int(point[0]))
+
+    return all_x, all_y
+
+
+def _convert_from_VIA_polygon(all_x: List, all_y: List) -> List[Tuple[int, int]]:
+    """
+    Transform object's coordinates from Visual Image Annotator (VIA) polygon format to pixel coordinates for the actual mask.
+
+    :param all_x: list of x coordinates of the contour points, expressed in absolute shape value
+    :param all_y: list of x coordinates of the contour points, expressed in absolute shape value
+    :return: list of object contour coordinats in (x, y) format
+    """
+    converted_points = [(int(x), int(y)) for x, y in zip(all_x, all_y)]
+    return converted_points
+
+
+def _get_contour_from_VIA_polygon(all_x: List, all_y: List):
+    polygon = _convert_from_VIA_polygon(all_x, all_y)
+    return np.array(polygon, dtype=np.int32)
+
+
+def _VIA_annotation_to_binary_mask(
+    task_annotation: DataFrameGroupBy, mask_shape: Tuple[int, int]
+) -> np.ndarray[np.uint8]:
+    """
+    Convert Visual Image Annotator (VIA) annotation to binary mask.
+
+    :param task_annotation: list containing VIA annotations for given task (image)
+    :param mask_shape: tuple with (image_height, image_width)
+    :return: reconstructed binary mask [0, 255] or None if impossible to reconstruct
+    """
+    binary_mask = np.zeros(mask_shape, dtype=np.uint8)
+
+    if len(task_annotation) >= 1:
+        # image_shape = (image_height, image_width)
+
+        for object_ in task_annotation.region_shape_attributes:
+            # skip if empty image (no cells)
+            if "all_points_x" not in object_:
+                continue
+            contour = _get_contour_from_VIA_polygon(
+                object_["all_points_x"], object_["all_points_y"]
+            )
+            cv2.fillPoly(binary_mask, [contour], 1)
+
+            # NOTE: the logic breaks with overlapping objects, in particular:
+            # - adding the objects produces a max_value higher than 1
+            # - this is fixed later with the thresholding, however overlapping objects are no longer distinct
+
+    # transform 0-1 binary to 0-255 range
+    binary_mask[binary_mask > 0] = 255
+
+    return binary_mask
+
+
 # BOUNDING BOXES
 def binary_mask_to_bbox(binary_mask):
     # Find contours in the binary mask
@@ -269,22 +337,22 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     ET.SubElement(size, "depth").text = "1"
 
     # TODO: retrieve from annotations metadata on Pandora
-    _ = ET.SubElement(annotation, "segmentation_type").text = "_get_segmentation_type(filename)"
+    _ = ET.SubElement(
+        annotation, "segmentation_type"
+    ).text = "_get_segmentation_type(filename)"
 
     # Add count annotation
     count_elem = ET.SubElement(annotation, "count")
     count_elem.text = str(object_count)
-    
+
     # Add objects
     for polygon, bbox, dot in zip(polygons, bboxes, dots):
         object_class_id = {"green": 1, "yellow": 2, "red": 3}.get(dataset_folder, 0)
         object_elem = ET.SubElement(annotation, "object")
-        ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id][
-            "name"
-        ]
-        ET.SubElement(object_elem, "marked_structure").text = CATEGORIES[object_class_id][
-            "supercategory"
-        ]
+        ET.SubElement(object_elem, "marker").text = CATEGORIES[object_class_id]["name"]
+        ET.SubElement(object_elem, "marked_structure").text = CATEGORIES[
+            object_class_id
+        ]["supercategory"]
         # ET.SubElement(object_elem, "pose").text = "Unspecified"
         # ET.SubElement(object_elem, "truncated").text = "Unspecified"
         # ET.SubElement(object_elem, "difficult").text = "Unspecified"
@@ -399,13 +467,10 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         annotation_entry["bbox"].append([xmin, ymin, width, height])
 
         # Add dots annotations
-        cX, cY = _get_centroid_from_region(
-            region_properties
-        )  # _get_centroid_from_contour(contour)
+        cX, cY = _get_centroid_from_region(region_properties)
         annotation_entry["dots"].append((cX, cY))
 
         # Add objects area
-        # annotation_entry["area"].append(cv2.contourArea(contour))
         annotation_entry["area"].append(int(region_properties.area))
 
     coco_annotation["annotations"].append(annotation_entry)
@@ -419,38 +484,35 @@ def save_coco_annotations(coco_dict, outpath):
         json.dump(coco_dict, file)
 
 
-
-def _convert_to_VIA_polygon(contour: List):
-    """
-    Transform object's contour coordinates in the mask to VGG VIA polygon format for the csv annotation.
-
-    :param contour: list of points coordinates (i.e.: [[x1, y1], [x2, y2], ...], where x*, y* are expressed as pixel
-    in the mask
-    :return:
-    """
-    all_x, all_y = list(), list()
-    for point in contour:
-        all_x.append(point[0])
-        all_y.append(point[1])
-
-    return all_x, all_y
+# VGG VIA annotations
+def initialize_VIA_dict():
+    via_annotation = dict()
+    return via_annotation
 
 
-def _convert_from_VIA_polygon(all_x: List, all_y: List) -> List[Tuple[int, int]]:
-    """
-    Transform object's coordinates from Visual Image Annotator (VIA) polygon format to pixel coordinates for the actual mask.
+def get_VIA_annotations(binary_mask, mask_relative_path):
+    image_relative_path = mask_relative_path.replace("ground_truths/masks", "images")
 
-    :param all_x: list of x coordinates of the contour points, expressed in absolute shape value
-    :param all_y: list of x coordinates of the contour points, expressed in absolute shape value
-    :return: list of object contour coordinats in (x, y) format
-    """
-    converted_points = [(int(x), int(y)) for x, y in zip(all_x, all_y)]
-    return converted_points
+    filename = mask_relative_path.split("/")[-1]
+    image_size = os.stat(DATA_PATH / image_relative_path).st_size
 
+    mask_via_dict = dict(
+        filename=filename,
+        size=image_size,
+        regions=[],
+        file_attributes={},
+    )
 
-def _get_contour_from_VIA_polygon(all_x: List, all_y: List):
-    polygon = _convert_from_VIA_polygon(all_x, all_y)
-    return np.array(polygon, dtype=np.int32)
+    contours = _get_object_contours(binary_mask)
+    for id_object, contour in enumerate(contours):
+        all_x, all_y = _convert_to_VIA_polygon(contour)
+        shape_attributes = dict(name="polygon", all_points_x=all_x, all_points_y=all_y)
+        region_attributes = dict()
+        mask_via_dict["regions"].append(
+            dict(shape_attributes=shape_attributes, region_attributes=region_attributes)
+        )
+
+    return {f"{filename}{image_size}": mask_via_dict}
 
 
 def load_VIA_annotations(annotations_path: Path) -> pd.DataFrame:
@@ -466,44 +528,6 @@ def load_VIA_annotations(annotations_path: Path) -> pd.DataFrame:
         json.loads
     )
     return annotations_df
-
-
-def _VIA_annotation_to_binary_mask(
-    task_annotation: DataFrameGroupBy, mask_shape: Tuple[int, int]
-) -> np.ndarray[np.uint8]:
-    """
-    Convert Visual Image Annotator (VIA) annotation to binary mask.
-
-    :param task_annotation: list containing VIA annotations for given task (image)
-    :param mask_shape: tuple with (image_height, image_width)
-    :return: reconstructed binary mask [0, 255] or None if impossible to reconstruct
-    """
-    binary_mask = np.zeros(mask_shape, dtype=np.uint8)
-    # task_annotation = annotation_tasks.get_group('400.png')
-
-    if len(task_annotation) >= 1:
-        # image_shape = (image_height, image_width)
-
-        for object_ in task_annotation.region_shape_attributes:
-            # skip if empty image (no cells)
-            if "all_points_x" not in object_:
-                continue
-            # polygon = np.array(
-            #     _convert_from_VIA_polygon(object_["all_points_x"], object_["all_points_y"])
-            # )
-            contour = _get_contour_from_VIA_polygon(object_["all_points_x"], object_["all_points_y"])
-            cv2.fillPoly(binary_mask, [contour], 1)
-            
-            # obj_mask = draw.polygon2mask(mask_shape, polygon)  # dtype: bool
-            # NOTE: the logic breaks with overlapping objects, in particular:
-            # - adding the objects produces a max_value higher than 1
-            # - this is fixed later with the thresholding, however overlapping objects are no longer distinct
-            # binary_mask += obj_mask
-
-    # transform 0-1 binary to 0-255 range
-    binary_mask[binary_mask > 0] = 255
-
-    return binary_mask
 
 
 def _save_converted_mask(binary_mask: np.ndarray, outpath: Path):
