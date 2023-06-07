@@ -389,7 +389,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
 
         # Add objects area
         # annotation_entry["area"].append(cv2.contourArea(contour))
-        annotation_entry["area"].append(region_properties.area)
+        annotation_entry["area"].append(int(region_properties.area))
 
     coco_annotation["annotations"].append(annotation_entry)
     
