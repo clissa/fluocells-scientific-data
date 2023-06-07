@@ -307,7 +307,7 @@ def binary_mask_to_count(binary_mask):
 
 
 # Pascal VOC format
-def get_pascal_voc_annotations(binary_mask, mask_relative_path):
+def get_pascal_VOC_annotations(binary_mask, mask_relative_path):
     # Convert binary mask to annotations
     polygons = binary_mask_to_polygon(binary_mask)
     bboxes = binary_mask_to_bbox(binary_mask)
@@ -384,13 +384,13 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     return tree
 
 
-def save_pascal_voc_annotations(tree, outpath):
+def save_pascal_VOC_annotations(tree, outpath):
     # Save the Pascal VOC annotation to a file
     tree.write(outpath)
 
 
 # COCO format
-def initialize_coco_dict():
+def initialize_COCO_dict():
     # Create COCO annotation structure
     coco_annotation = {
         "info": {
@@ -414,7 +414,7 @@ def initialize_coco_dict():
     return coco_annotation
 
 
-def get_coco_annotations(binary_mask, mask_relative_path):
+def get_COCO_annotations(binary_mask, mask_relative_path):
     # Convert binary mask to annotations
     contours = _get_object_contours(binary_mask, max_points=N_POINTS)
     regions = _get_object_regions(binary_mask)
@@ -425,7 +425,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
     image_path = mask_relative_path.replace("ground_truths/masks", "images")
     filename = mask_relative_path.split("/")[-1]
 
-    coco_annotation = initialize_coco_dict()
+    coco_annotation = initialize_COCO_dict()
 
     # Create COCO image entry
     image_entry = {
@@ -478,10 +478,10 @@ def get_coco_annotations(binary_mask, mask_relative_path):
     return coco_annotation
 
 
-def save_json_annotations(coco_dict, outpath):
+def save_json_annotations(json_dict, outpath):
     # Save the COCO annotation to a file
     with open(outpath, "w") as file:
-        json.dump(coco_dict, file)
+        json.dump(json_dict, file)
 
 
 # VGG VIA annotations

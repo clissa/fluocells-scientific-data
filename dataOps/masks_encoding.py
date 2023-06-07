@@ -30,11 +30,11 @@ from fluocells.utils.annotations import (
     binary_mask_to_rle,
     binary_mask_to_rle,
     save_rle_encoding,
-    get_pascal_voc_annotations,
-    save_pascal_voc_annotations,
-    get_coco_annotations,
+    get_pascal_VOC_annotations,
+    save_pascal_VOC_annotations,
+    get_COCO_annotations,
     save_json_annotations,
-    initialize_coco_dict,
+    initialize_COCO_dict,
     get_VIA_annotations,
     initialize_VIA_dict,
 )
@@ -52,14 +52,14 @@ if __name__ == "__main__":
         mask_paths = DATA_PATH / f"{dataset}/{split}/ground_truths/masks"
         rle_path = mask_paths.parent / "rle"
         rle_path.mkdir(exist_ok=True, parents=True)
-        voc_path = mask_paths.parent / "pascal_voc"
+        voc_path = mask_paths.parent / "Pascal_VOC"
         voc_path.mkdir(exist_ok=True, parents=True)
         coco_path = mask_paths.parent / "COCO"
         coco_path.mkdir(exist_ok=True, parents=True)
         via_path = mask_paths.parent / "VIA"
         via_path.mkdir(exist_ok=True, parents=True)
 
-        coco_dict = initialize_coco_dict()
+        coco_dict = initialize_COCO_dict()
         via_dict = initialize_VIA_dict()
         for mask_path in tqdm(
             [*mask_paths.iterdir()], desc=f"{dataset}/{split} loop:", leave=False
@@ -69,9 +69,9 @@ if __name__ == "__main__":
             save_rle_encoding(rle_mask, rle_path / (mask_path.stem + ".pickle"))
 
             mask_relative_path = str(mask_path.relative_to(DATA_PATH))
-            xml_tree = get_pascal_voc_annotations(binary_mask, mask_relative_path)
-            save_pascal_voc_annotations(xml_tree, voc_path / (mask_path.stem + ".xml"))
-            mask_coco_dict = get_coco_annotations(binary_mask, mask_relative_path)
+            xml_tree = get_pascal_VOC_annotations(binary_mask, mask_relative_path)
+            save_pascal_VOC_annotations(xml_tree, voc_path / (mask_path.stem + ".xml"))
+            mask_coco_dict = get_COCO_annotations(binary_mask, mask_relative_path)
             coco_dict["images"].extend(mask_coco_dict["images"])
             coco_dict["annotations"].extend(mask_coco_dict["annotations"])
             mask_via_dict = get_VIA_annotations(binary_mask, mask_relative_path)
