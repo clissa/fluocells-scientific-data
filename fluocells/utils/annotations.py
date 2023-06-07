@@ -30,6 +30,7 @@ from pycocotools import coco as cocoUtils
 import xml.etree.ElementTree as ET
 
 import cv2
+from skimage import measure
 from matplotlib import pyplot as plt
 
 from fluocells.config import DATA_PATH
@@ -93,6 +94,15 @@ def _get_object_contours(binary_mask, max_points=None):
     return sampled_contours
 
 
+def _get_object_regions(binary_mask):
+    labels_mask = measure.label(binary_mask)
+    regions = measure.regionprops(labels_mask)
+    
+    # reverse for compatibility with opencv contours ordering
+    regions.reverse()
+    return regions
+
+
 def _get_polygon_from_contour(contour):
     # convert from np.int32 to int to avoid json serialization issues
     return [(int(point[0]), int(point[1])) for point in contour]
@@ -150,14 +160,25 @@ def bbox_to_binary_mask(boxes, image_shape):
 # DOT ANNOTATIONS
 def _get_centroid_from_contour(contour):
     M = cv2.moments(contour)
+    # fails when m00=0 --> scikit-image is more stable
     cX = int(M["m10"] / M["m00"])
     cY = int(M["m01"] / M["m00"])
     return (cX, cY)
 
 
-def binary_mask_to_dots(binary_mask):
+def _get_centroid_from_region(region_properties):
+    cY, cX = region_properties.centroid
+    return int(cX), int(cY)
+
+
+def binary_mask_to_opencv_dots(binary_mask):
     contours = _get_object_contours(binary_mask)
     return [_get_centroid_from_contour(contour) for contour in contours]
+
+
+def binary_mask_to_skimage_dots(binary_mask):
+    regions = _get_object_regions(binary_mask)
+    return [_get_centroid_from_region(region_properties) for region_properties in regions]
 
 
 def dots_to_binary_mask(dots, image_shape):
@@ -185,7 +206,7 @@ def get_pascal_voc_annotations(binary_mask, mask_relative_path):
     # Convert binary mask to annotations
     polygons = binary_mask_to_polygon(binary_mask)
     bboxes = binary_mask_to_bbox(binary_mask)
-    dots = binary_mask_to_dots(binary_mask)
+    dots = binary_mask_to_skimage_dots(binary_mask)
     object_count = binary_mask_to_count(binary_mask)
 
     # Create Pascal VOC annotation XML structure
@@ -327,6 +348,7 @@ def initialize_coco_dict():
 def get_coco_annotations(binary_mask, mask_relative_path):
     # Convert binary mask to annotations
     contours = _get_object_contours(binary_mask, max_points=N_POINTS)
+    regions = _get_object_regions(binary_mask)
     object_count = len(contours)
 
     split = mask_relative_path.split("/")[1]
@@ -364,7 +386,7 @@ def get_coco_annotations(binary_mask, mask_relative_path):
     }
 
     # Add annotations
-    for contour in contours:
+    for contour, region_properties in zip(contours, regions):
         
         # Add polygon annotations
         polygon = _get_polygon_from_contour(contour)
@@ -375,11 +397,12 @@ def get_coco_annotations(binary_mask, mask_relative_path):
         annotation_entry["bbox"].append([xmin, ymin, width, height])
 
         # Add dots annotations 
-        cX, cY = _get_centroid_from_contour(contour)    
+        cX, cY = _get_centroid_from_region(region_properties) #_get_centroid_from_contour(contour)    
         annotation_entry["dots"].append((cX, cY))
 
         # Add objects area
-        annotation_entry["area"].append(cv2.contourArea(contour))
+        # annotation_entry["area"].append(cv2.contourArea(contour))
+        annotation_entry["area"].append(region_properties.area)
 
     coco_annotation["annotations"].append(annotation_entry)
     
@@ -426,9 +449,9 @@ def test_bbox(binary_mask):
 
 
 def test_dots(binary_mask):
-    dots = binary_mask_to_dots(binary_mask)
+    dots = binary_mask_to_skimage_dots(binary_mask)
 
-    expected_output = np.array([(2, 0), (2, 3)])
+    expected_output = np.array([(2, 3), (2, 0)])
 
     assert np.array_equal(
         dots, expected_output
@@ -454,5 +477,5 @@ if __name__ == "__main__":
     test_rle(binary_mask)
     test_polygon(binary_mask)
     test_bbox(binary_mask)
-    test_dots(binary_mask) #TODO: fix `ZeroDivisionError: float division by zero`
+    test_dots(binary_mask)
     test_count(binary_mask)
