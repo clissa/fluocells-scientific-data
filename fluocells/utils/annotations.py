@@ -173,8 +173,8 @@ def _convert_to_VIA_polygon(contour: List):
     """
     all_x, all_y = list(), list()
     for point in contour:
-        all_x.append(int(point[1]))
-        all_y.append(int(point[0]))
+        all_x.append(int(point[0]))
+        all_y.append(int(point[1]))
 
     return all_x, all_y
 
