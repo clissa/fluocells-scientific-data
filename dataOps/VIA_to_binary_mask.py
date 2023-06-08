@@ -30,8 +30,7 @@ if __name__ == "__main__":
     metadata_df = pd.read_excel(DATA_PATH / "metadata_v1_6.xlsx", sheet_name="metadata")
     labeled_data = metadata_df.query("partition != 'unlabelled' and dataset==@DATASET")
 
-    # annotations_df = get_via_annotations_df(ANNOTATIONS_PATH / f"{MARKER}_first_round_reviewed.csv")
-    # annotations_df = get_via_annotations_df(ANNOTATIONS_PATH / f"{MARKER}_first_round_reviewed.csv")
+    # annotations_df = load_VIA_annotations(ANNOTATIONS_PATH / f"{MARKER}_first_round_reviewed.csv")
     annotations_df = load_VIA_annotations(ANNOTATIONS_PATH / f"{MARKER}_second_round_reviewed.csv")
 
     # annotation_tasks = annotations_df.iloc[:35].groupby("filename")
