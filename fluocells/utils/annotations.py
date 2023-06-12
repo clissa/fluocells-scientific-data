@@ -36,7 +36,7 @@ import cv2
 from PIL import Image
 from skimage import measure, io
 from matplotlib import pyplot as plt
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from fluocells.config import DATA_PATH, METADATA
 from fluocells.utils.data import get_image_name_relative_path, get_mask_relative_path
@@ -490,8 +490,9 @@ def initialize_VIA_dict():
     return via_annotation
 
 
-def get_VIA_annotations(binary_mask, mask_relative_path):
-    image_relative_path = mask_relative_path.replace("ground_truths/masks", "images")
+def get_VIA_annotations(binary_mask, mask_relative_path, image_relative_path: Union[None, str] = None):
+    if image_relative_path is None:
+        image_relative_path = mask_relative_path.replace("ground_truths/masks", "images")
 
     filename = mask_relative_path.split("/")[-1]
     image_size = os.stat(DATA_PATH / image_relative_path).st_size
