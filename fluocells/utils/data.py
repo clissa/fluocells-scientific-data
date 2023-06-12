@@ -19,19 +19,24 @@ import pandas as pd
 import numpy as np
 
 import tifffile
+import cv2
+from scipy import ndimage
 from PIL import Image, ExifTags
 import piexif
+from skimage.feature import peak_local_max
 from skimage.morphology import remove_small_holes, remove_small_objects
-from skimage import io, measure
+from skimage import io, measure, morphology, segmentation
 from tqdm.auto import tqdm
-from typing import List, Literal, Union
+from typing import List, Literal, Union, Tuple
 
 from fluocells.config import DATA_PATH, METADATA, DEBUG_PATH
 
 
+MISSING = "unknown"
+
 N_POINTS: int = 40
 
-MISSING = "unknown"
+SMOOOTHING_DISK_SIZE = 10
 
 
 def parse_animal(animal: str):
@@ -115,7 +120,9 @@ EXTENSIONS = [".png", ".jpg", ".TIFF", ".TIF"]
 
 
 def get_all_paths(
-    source_path: Path, mode: Literal[None, "images", "masks"] = "images", exts=EXTENSIONS
+    source_path: Path,
+    mode: Literal[None, "images", "masks"] = "images",
+    exts=EXTENSIONS,
 ) -> tuple:
     """Recursevely search for files with desired extension inside source_path.
 
@@ -144,12 +151,10 @@ def get_all_paths(
     return all_files_list, set(ignored_extensions)
 
 
-def get_image_name_relative_path(
-    image_name_row: pd.DataFrame
-) -> str:
+def get_image_name_relative_path(image_name_row: pd.DataFrame) -> str:
     relative_path = "/".join(
-            [image_name_row.dataset.values[0], image_name_row.partition.values[0], "images"]
-        )
+        [image_name_row.dataset.values[0], image_name_row.partition.values[0], "images"]
+    )
     return relative_path
 
 
@@ -171,7 +176,7 @@ def tif2png_with_metadata(p: Path, outpath: Path, outname: Union[str, None] = No
         outname = outpath / outname if outname else outpath / (p.stem + ".png")
         # print(f'Saving converted file to: {outname}')
         tiff_image.save(outname, format="PNG")
-    
+
 
 def jpg2png_with_metadata(p: Path, outpath: Path, outname: Union[str, None] = None):
     with Image.open(p) as jpg_image:
@@ -179,8 +184,8 @@ def jpg2png_with_metadata(p: Path, outpath: Path, outname: Union[str, None] = No
         outname = outpath / outname if outname else outpath / (p.stem + ".png")
         # print(f'Saving converted file to: {outname}')
         jpg_image.save(outname, format="PNG")
-        
-        
+
+
 def dump_tif_metadata(metadata, outpath):
     with open(outpath, "w") as file:
         header = "# metadata from tifffile.TiffFile().pages[0].tags\n"
@@ -249,31 +254,74 @@ def check_mask_format_(mask: np.ndarray):
     return mask
 
 
+def smooth_contours(
+    mask: np.ndarray,
+    # min_area_threshold: int = 100,
+    disk_size: int = SMOOOTHING_DISK_SIZE,
+) -> Tuple[np.ndarray, np.ndarray]:
+    from fluocells.utils.annotations import _get_object_contours
+
+    # Apply morphological operations to reduce fragmentation
+    eroded = morphology.erosion(mask, footprint=morphology.disk(disk_size))
+    dilated = morphology.dilation(eroded, footprint=morphology.disk(disk_size))
+    
+    dilated = morphology.dilation(dilated, footprint=morphology.disk(disk_size))
+    eroded = morphology.erosion(dilated, footprint=morphology.disk(disk_size))
+
+    # Find contours in the smoothed mask
+    contours = _get_object_contours(eroded)
+
+    # Draw the smoothed contours on the mask
+    smoothed_mask = np.zeros_like(mask, dtype=np.uint8)
+    for contour in contours:
+        cv2.fillPoly(smoothed_mask, [contour], 1)
+
+    return check_mask_format_(smoothed_mask) #, check_mask_format_(filtered_mask)
+
+
 def clean_mask(
-    mask: np.ndarray, bin_thresh: int, min_hole_size: int, min_object_size: int
+    mask: np.ndarray, bin_thresh: int, max_hole_size: int, min_object_size: int
 ):
     # binary
     mask[mask > bin_thresh] = 255
     mask[mask <= bin_thresh] = 0
     # fill holes
     mask = remove_small_holes(
-        mask, area_threshold=min_hole_size
+        mask.astype(bool), area_threshold=max_hole_size
     )  # return array [False, True]
-    mask = remove_small_objects(mask, min_size=min_object_size)
+    mask = remove_small_objects(mask.astype(bool), min_size=min_object_size)
     return (mask * 255).astype("uint8")
 
 
-def remove_noise_from_masks(
+def _remove_noise_from_masks(
+    mask: np.ndarray,
+    bin_thresh: int,
+    max_hole_size: int,
+    min_object_size: int,
+    smoothing: bool = True,
+    disk_size: int = SMOOOTHING_DISK_SIZE
+):
+    if smoothing:
+        mask = smooth_contours(mask, disk_size)
+    else:
+        mask = check_mask_format_(mask)
+    mask = clean_mask(mask, bin_thresh, max_hole_size, min_object_size)
+    
+    return mask
+
+
+def remove_noise(
     mask_paths: List[Path],
     outpath: Path,
     bin_thresh: int,
-    min_hole_size: int,
+    max_hole_size: int,
     min_object_size: int,
 ):
     for p in tqdm(mask_paths):
         mask = io.imread(p, as_gray=True)
-        mask = check_mask_format_(mask)
-        mask = clean_mask(mask, bin_thresh, min_hole_size, min_object_size)
+        # mask = check_mask_format_(mask)
+        # mask = clean_mask(mask, bin_thresh, min_hole_size, min_object_size)
+        mask = _remove_noise_from_masks(mask, bin_thresh, max_hole_size, min_object_size, False)
         # fix filename and change format
         # outpath = outpath if outpath.name == "masks" else outpath / "masks"
         outpath.mkdir(parents=True, exist_ok=True)
@@ -281,7 +329,7 @@ def remove_noise_from_masks(
     return
 
 
-def compute_masks_stats(masks_paths: List[Path]) -> pd.DataFrame:
+def compute_masks_stats(masks_paths: List[Path], outpath: Union[None, Path] = None) -> pd.DataFrame:
     """
     Read ground-truth masks and compute metrics for cell counts and shapes
     :param masks_path: masks folder
@@ -338,7 +386,9 @@ def compute_masks_stats(masks_paths: List[Path]) -> pd.DataFrame:
             # 'min_intensity', 'mean_intensity', 'max_intensity'
         ],
     )
+    if outpath is None:
+        outpath = masks_paths[0].parent.parent.parent / "stats_df.csv"
     stats_df.round(4).to_csv(
-        masks_paths[0].parent.parent.parent / "stats_df.csv", index=False
+        outpath, index=False
     )
     return stats_df
