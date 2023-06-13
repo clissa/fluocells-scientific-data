@@ -7,6 +7,13 @@ dataset*
 # output
 figures/
 
+# temporary
+dataOps/compute_masks_stats.py
+notebooks/Challenges*
+notebooks/Data*
+notebooks/Future*
+
+
 ### Template
 
 # Byte-compiled / optimized / DLL files
