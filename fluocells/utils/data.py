@@ -264,7 +264,7 @@ def smooth_contours(
     # Apply morphological operations to reduce fragmentation
     eroded = morphology.erosion(mask, footprint=morphology.disk(disk_size))
     dilated = morphology.dilation(eroded, footprint=morphology.disk(disk_size))
-    
+
     dilated = morphology.dilation(dilated, footprint=morphology.disk(disk_size))
     eroded = morphology.erosion(dilated, footprint=morphology.disk(disk_size))
 
@@ -276,7 +276,7 @@ def smooth_contours(
     for contour in contours:
         cv2.fillPoly(smoothed_mask, [contour], 1)
 
-    return check_mask_format_(smoothed_mask) #, check_mask_format_(filtered_mask)
+    return check_mask_format_(smoothed_mask)  # , check_mask_format_(filtered_mask)
 
 
 def clean_mask(
@@ -299,14 +299,14 @@ def _remove_noise_from_masks(
     max_hole_size: int,
     min_object_size: int,
     smoothing: bool = True,
-    disk_size: int = SMOOOTHING_DISK_SIZE
+    disk_size: int = SMOOOTHING_DISK_SIZE,
 ):
     if smoothing:
         mask = smooth_contours(mask, disk_size)
     else:
         mask = check_mask_format_(mask)
     mask = clean_mask(mask, bin_thresh, max_hole_size, min_object_size)
-    
+
     return mask
 
 
@@ -321,7 +321,9 @@ def remove_noise(
         mask = io.imread(p, as_gray=True)
         # mask = check_mask_format_(mask)
         # mask = clean_mask(mask, bin_thresh, min_hole_size, min_object_size)
-        mask = _remove_noise_from_masks(mask, bin_thresh, max_hole_size, min_object_size, False)
+        mask = _remove_noise_from_masks(
+            mask, bin_thresh, max_hole_size, min_object_size, False
+        )
         # fix filename and change format
         # outpath = outpath if outpath.name == "masks" else outpath / "masks"
         outpath.mkdir(parents=True, exist_ok=True)
@@ -329,7 +331,105 @@ def remove_noise(
     return
 
 
-def compute_masks_stats(masks_paths: List[Path], outpath: Union[None, Path] = None) -> pd.DataFrame:
+def _compute_masks_stats(binary_mask: np.ndarray) -> pd.DataFrame:
+    image_data = []
+    skimage_label, n_objs = measure.label(binary_mask, connectivity=1, return_num=True)
+
+    # add one row per object
+    regions = measure.regionprops(skimage_label)
+    for idx_obj, obj in enumerate(regions):
+        image_data.append(
+            [
+                n_objs,
+                idx_obj,
+                obj.area,
+                obj.minor_axis_length,
+                obj.major_axis_length,
+                obj.equivalent_diameter,
+                obj.feret_diameter_max,
+                # obj.min_intensity, obj.mean_intensity, obj.max_intensity
+            ]
+        )
+    # add empty row in case image has no objects
+    if n_objs == 0:
+        image_data.append(
+            [
+                int(n_objs),
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                np.nan,
+                # np.nan, np.nan, np.nan
+            ]
+        )
+
+    stats_df = pd.DataFrame(
+        data=image_data,
+        columns=[
+            "n_cells",
+            "cell_id",
+            "area",
+            "min_axis_length",
+            "max_axis_length",
+            "equivalent_diameter",
+            "feret_diameter_max",
+            # 'min_intensity', 'mean_intensity', 'max_intensity'
+        ],
+    )
+    return stats_df.astype(
+        {
+            "n_cells": "float",
+            "cell_id": "float",
+            "area": "float",
+            "min_axis_length": "float",
+            "max_axis_length": "float",
+            "equivalent_diameter": "float",
+            "feret_diameter_max": "float",
+        }
+    )
+
+
+def _enrich_stats(stats_df: pd.DataFrame, mask_relative_path: Path) -> pd.DataFrame:
+    old_columns = stats_df.columns
+    # mask_relative_path = mask_path.relative_to(DATA_PATH)
+    # print(mask_relative_path.parts)
+    stats_df["image_name"] = mask_relative_path.name
+    stats_df["dataset"] = mask_relative_path.parts[0]
+    stats_df["partition"] = mask_relative_path.parts[1]
+    stats_df = stats_df[["image_name", "dataset", "partition"] + list(old_columns)]
+    return stats_df
+
+
+def compute_masks_stats(
+    masks_paths: List[Path], outpath: Union[None, Path] = None
+) -> pd.DataFrame:
+    """
+    Read ground-truth masks and compute metrics for cell counts and shapes
+    :param masks_path: masks folder
+    :return:
+    """
+    # paths = [*masks_path.iterdir()]
+    stats_df = pd.DataFrame()
+    for p in tqdm(masks_paths):
+        mask_relative_path = p.relative_to(DATA_PATH)
+        mask = io.imread(p, as_gray=True)
+        mask_stats = _compute_masks_stats(mask)
+
+        mask_stats = _enrich_stats(mask_stats, mask_relative_path)
+
+        stats_df = pd.concat([stats_df, mask_stats], ignore_index=True)
+
+    if outpath is None:
+        outpath = DATA_PATH / "cells_stats_df.csv"
+    stats_df.round(4).to_csv(outpath, index=False)
+    return stats_df
+
+
+def compute_masks_stats_v1(
+    masks_paths: List[Path], outpath: Union[None, Path] = None
+) -> pd.DataFrame:
     """
     Read ground-truth masks and compute metrics for cell counts and shapes
     :param masks_path: masks folder
@@ -388,7 +488,5 @@ def compute_masks_stats(masks_paths: List[Path], outpath: Union[None, Path] = No
     )
     if outpath is None:
         outpath = masks_paths[0].parent.parent.parent / "stats_df.csv"
-    stats_df.round(4).to_csv(
-        outpath, index=False
-    )
+    stats_df.round(4).to_csv(outpath, index=False)
     return stats_df
