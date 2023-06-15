@@ -18,21 +18,34 @@ sys.path.append(str(FLUOCELLS_PATH))
 import pandas as pd
 
 from fluocells.config import DATA_PATH, REPO_PATH, METADATA
-from fluocells.utils.annotations import apply_VIA_annotation_to_binary_mask, load_VIA_annotations
+from fluocells.utils.annotations import (
+    apply_VIA_annotation_to_binary_mask,
+    load_VIA_annotations,
+)
 
-ANNOTATIONS_PATH = DATA_PATH / "annotations/Annotator"
+ANNOTATIONS_PATH = DATA_PATH / "annotations"
 DATASET = "green"
 MARKER = {"green": "c-FOS", "yellow": "CTb", "red": "Orx"}[DATASET]
-
+ANNOTATION_ROUNDS = {
+    "green": ["first", "second", "third"],
+    "red": ["first", "second", "third"],
+    "yellow": ["first"],
+}
 
 if __name__ == "__main__":
-
-    metadata_df = pd.read_excel(DATA_PATH / "metadata_v1_6.xlsx", sheet_name="metadata")
+    metadata_df = pd.read_excel(
+        DATA_PATH / f"metadata_{METADATA['current_version']}.xlsx",
+        sheet_name="metadata",
+    )
     labeled_data = metadata_df.query("partition != 'unlabelled' and dataset==@DATASET")
 
-    # annotations_df = load_VIA_annotations(ANNOTATIONS_PATH / f"{MARKER}_first_round_reviewed.csv")
-    annotations_df = load_VIA_annotations(ANNOTATIONS_PATH / f"{MARKER}_second_round_reviewed.csv")
+    for annotation_round in ANNOTATION_ROUNDS[DATASET]:
+        annotations_df = load_VIA_annotations(
+            ANNOTATIONS_PATH / f"{MARKER}_{annotation_round}_round_reviewed.csv"
+        )
 
-    # annotation_tasks = annotations_df.iloc[:35].groupby("filename")
-    annotation_tasks = annotations_df.groupby("filename")
-    annotation_tasks.apply(apply_VIA_annotation_to_binary_mask, DATA_PATH, DATA_PATH, metadata_df)
+        # annotation_tasks = annotations_df.iloc[:35].groupby("filename")
+        annotation_tasks = annotations_df.groupby("filename")
+        annotation_tasks.apply(
+            apply_VIA_annotation_to_binary_mask, DATA_PATH, DATA_PATH, metadata_df
+        )
