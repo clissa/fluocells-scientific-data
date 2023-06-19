@@ -12,7 +12,12 @@ dataOps/compute_masks_stats.py
 notebooks/Challenges*
 notebooks/Data*
 notebooks/Future*
-
+Orx*
+INFN*
+red_original/
+red_raw
+red original.zip
+dataOps/temp.py
 
 ### Template
 
