@@ -333,7 +333,7 @@ def remove_noise(
 
 def _compute_masks_stats(binary_mask: np.ndarray) -> pd.DataFrame:
     image_data = []
-    skimage_label, n_objs = measure.label(binary_mask, connectivity=1, return_num=True)
+    skimage_label, n_objs = measure.label(binary_mask, connectivity=2, return_num=True)
 
     # add one row per object
     regions = measure.regionprops(skimage_label)
