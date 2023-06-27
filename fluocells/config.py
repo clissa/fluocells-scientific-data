@@ -45,3 +45,6 @@ UNLABELLED_IMG_PATH_y = DATA_PATH_y / "unlabelled/images"
 UNLABELLED_IMG_PATH_g = DATA_PATH_g / "unlabelled/images"
 
 DEBUG_PATH = REPO_PATH / "debug"
+
+# models
+MODELS_PATH = REPO_PATH / "models"
