@@ -6,6 +6,8 @@ dataset*
 
 # output
 figures/
+logs/
+models/
 
 # temporary
 dataOps/compute_masks_stats.py
