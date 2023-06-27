@@ -2,7 +2,7 @@
 This submodule contains implementations of suggested architectures to deal with fluocells data.
 
 Currently available:
- - cell ResUnet (c-resunet): Morelli, R., Clissa, L. et al., SciRep (2020) https://www.nature.com/articles/s41598-021-01929-5
+ - cell ResUnet (c-resunet): Morelli, R., Clissa, L. et al., SciRep (2021) https://www.nature.com/articles/s41598-021-01929-5
 
 Author: Luca Clissa <clissa@bo.infn.it>
 Created: 2023-06-27
