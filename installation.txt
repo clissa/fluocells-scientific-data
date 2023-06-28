@@ -1,6 +1,7 @@
 conda create --name fluocells python=3.9.15
 conda activate fluocells
+conda install -y -c conda-forge mamba
 mamba install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
 mamba install -c fastchan fastai
-mamba install -c conda-forge opencv
-mamba install -c anaconda jupyter 
+#mamba install -c conda-forge opencv
+#mamba install -c anaconda jupyter 
