@@ -28,7 +28,7 @@ from fluocells.models import cResUnet, c_resunet
 
 import argparse
 
-parser = argparse.ArgumentParser(description="Your script description")
+parser = argparse.ArgumentParser(description="Run a basic training pipeline")
 
 # Add the dataset argument
 parser.add_argument(
