@@ -10,6 +10,15 @@ Created: 2023-06-28
 License: Apache License 2.0
 """
 
+import sys
+import inspect
+from pathlib import Path
+
+SCRIPT_PATH = inspect.getfile(inspect.currentframe())
+FLUOCELLS_PATH = Path(SCRIPT_PATH).absolute()
+
+sys.path.append(str(FLUOCELLS_PATH))
+
 import os
 import json
 from random import randint
