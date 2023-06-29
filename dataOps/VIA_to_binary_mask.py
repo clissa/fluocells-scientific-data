@@ -6,6 +6,8 @@ Created: 2023-06-07
 License: Apache License 2.0
 """
 
+
+
 import sys
 import inspect
 from pathlib import Path
@@ -23,8 +25,22 @@ from fluocells.utils.annotations import (
     load_VIA_annotations,
 )
 
+import argparse
+
+parser = argparse.ArgumentParser(description="Convert VIA annotations to binary masks")
+
+# Add the dataset argument
+parser.add_argument(
+    "dataset",
+    type=str,
+    choices=["green", "yellow", "red"],
+    help="Dataset to train on: green, yellow, or red",
+)
+
+args = parser.parse_args()
+
 ANNOTATIONS_PATH = DATA_PATH / "annotations"
-DATASET = "green"
+DATASET = args.dataset
 MARKER = {"green": "c-FOS", "yellow": "CTb", "red": "Orx"}[DATASET]
 ANNOTATION_ROUNDS = {
     "green": ["first", "second", "third"],
