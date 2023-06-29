@@ -40,9 +40,35 @@ from fluocells.utils.annotations import (
 )
 
 
+import argparse
+
+parser = argparse.ArgumentParser(description="Transform binary mask into several common annotation formats")
+
+# Add the dataset argument
+parser.add_argument(
+    "--datasets",
+    nargs="+",
+    type=str,
+    choices=["green", "yellow", "red"],
+    default=["green", "yellow", "red"],
+    help="Dataset(s) list. Option(s): green, yellow, red (default: green yellow red)",
+)
+
+# Add the split argument
+parser.add_argument(
+    "--splits",
+    nargs="+",
+    type=str,
+    choices=["test", "trainval"],
+    default=["test", "trainval"],
+    help="Data split(s) list. Options: test, trainval (default: test trainval)",
+)
+
+args = parser.parse_args()
+
 if __name__ == "__main__":
-    datasets = ["green", "yellow", "red"]
-    splits = ["trainval", "test"]
+    datasets = args.datasets # ["green", "yellow", "red"]
+    splits = args.splits # ["trainval", "test"]
 
     for dataset, split in tqdm(
         [*itertools.product(datasets, splits)],
