@@ -146,9 +146,9 @@ def main(dataset, gpu_id, cfg):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     # edit dataset folder here: DATA_PATH_g --> green; DATA_PATH_y --> yellow; DATA_PATH_r --> red
-    data_path = globals()[f"DATA_PATH_{dataset[0]}"]
+    dataset_path = globals()[f"DATA_PATH_{dataset[0]}"]
 
-    trainval_path = data_path / "trainval" / "images"
+    trainval_path = dataset_path / "trainval" / "images"
     trainval_fnames = [fn for fn in trainval_path.iterdir()]
 
     # augmentation
