@@ -229,7 +229,7 @@ def main(postproc_cfg):
             max_hole_size=postproc_cfg.max_hole,
             min_object_size=postproc_cfg.min_size,
             max_filter_size=postproc_cfg.max_dist,
-            fp_size=(postproc_cfg.fp, postproc_cfg.fp),
+            footprint=postproc_cfg.fp,
         )
 
         mask_label = measure.label(mask.squeeze())
