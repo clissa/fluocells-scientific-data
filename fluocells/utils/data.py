@@ -503,7 +503,7 @@ def post_process(
         labels_pred, area_threshold=max_hole_size, connectivity=connect_pattern
     )
     processed = remove_small_objects(
-        processed, min_size=min_obj_size, connectivity=connect_pattern
+        processed, min_size=min_object_size, connectivity=connect_pattern
     )
     labels_bool = processed.astype(bool)
 
