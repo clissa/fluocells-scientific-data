@@ -494,7 +494,7 @@ def compute_masks_stats_v1(
 
 
 def post_process(
-    binary_pred, max_hole_size=50, min_obj_size=200, max_dist=30, footprint=40
+    binary_pred, max_hole_size=50, min_object_size=200, max_filter_size=30, footprint=40
 ):
     connect_pattern = 1
     # Find object in predicted image
@@ -509,7 +509,7 @@ def post_process(
 
     distance = ndimage.distance_transform_edt(processed)
 
-    maxi = ndimage.maximum_filter(distance, size=max_dist, mode="constant")
+    maxi = ndimage.maximum_filter(distance, size=max_filter_size, mode="constant")
     local_maxi = peak_local_max(
         maxi,
         indices=False,
