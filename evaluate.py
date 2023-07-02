@@ -1,12 +1,9 @@
 """
-This scripts assess predictions on given dataset. It takes 3 CLI arguments:
-
- - dataset (green, yellow or red): dataset to assess
- - seed: initialization for data split and network weights/training cycle
- - gpu_id: id of the gpu to use for training
+This scripts assess predictions on given dataset. It takes CLI arguments for post-processing params. 
+Run python evaluate.py --help for more details.
 
 Author: Luca Clissa <clissa@bo.infn.it>
-Created: 2023-06-28
+Created: 2023-07-02
 License: Apache License 2.0
 """
 
