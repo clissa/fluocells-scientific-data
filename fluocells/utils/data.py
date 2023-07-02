@@ -26,6 +26,7 @@ import piexif
 from skimage.feature import peak_local_max
 from skimage.morphology import remove_small_holes, remove_small_objects
 from skimage import io, measure, morphology, segmentation
+
 from tqdm.auto import tqdm
 from typing import List, Literal, Union, Tuple
 
@@ -490,3 +491,39 @@ def compute_masks_stats_v1(
         outpath = masks_paths[0].parent.parent.parent / "stats_df.csv"
     stats_df.round(4).to_csv(outpath, index=False)
     return stats_df
+
+
+def post_process(
+    binary_pred, max_hole_size=50, min_obj_size=200, max_dist=30, footprint=40
+):
+    connect_pattern = 1
+    # Find object in predicted image
+    labels_pred = measure.label(binary_pred, connectivity=connect_pattern)
+    processed = remove_small_holes(
+        labels_pred, area_threshold=max_hole_size, connectivity=connect_pattern
+    )
+    processed = remove_small_objects(
+        processed, min_size=min_obj_size, connectivity=connect_pattern
+    )
+    labels_bool = processed.astype(bool)
+
+    distance = ndimage.distance_transform_edt(processed)
+
+    maxi = ndimage.maximum_filter(distance, size=max_dist, mode="constant")
+    local_maxi = peak_local_max(
+        maxi,
+        indices=False,
+        footprint=np.ones((footprint, footprint)),
+        exclude_border=False,
+        labels=labels_bool,
+    )
+
+    local_maxi = remove_small_objects(
+        local_maxi, min_size=25, connectivity=connect_pattern
+    )
+    markers = measure.label(local_maxi)
+    watershed_mask = segmentation.watershed(
+        -distance, markers, mask=labels_bool, compactness=1, watershed_line=True
+    )
+
+    return watershed_mask.astype("uint8") * 255
