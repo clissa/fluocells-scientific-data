@@ -3,5 +3,8 @@ conda activate fluocells
 conda install -y -c conda-forge mamba
 mamba install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
 mamba install -c fastchan fastai
-#mamba install -c conda-forge opencv
+#mamba install -c conda-forge opencv # dataOps
 #mamba install -c anaconda jupyter 
+mamba install -c anaconda scikit-image 
+mamba install -c conda-forge piexif # dataOps
+mamba install -c conda-forge pycocotools # dataOps
