@@ -8,6 +8,7 @@ dataset*
 figures/
 logs/
 models/
+results/
 
 # temporary
 dataOps/compute_masks_stats.py
