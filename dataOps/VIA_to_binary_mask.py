@@ -7,7 +7,6 @@ License: Apache License 2.0
 """
 
 
-
 import sys
 import inspect
 from pathlib import Path
@@ -44,7 +43,7 @@ DATASET = args.dataset
 MARKER = {"green": "c-FOS", "yellow": "CTb", "red": "Orx"}[DATASET]
 ANNOTATION_ROUNDS = {
     "green": ["first", "second", "third"],
-    "red": ["first", "second", "third"],
+    "red": ["fourth"],  # ["first", "second", "third"],
     "yellow": ["first"],
 }
 
