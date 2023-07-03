@@ -267,15 +267,15 @@ def smooth_contours(
     dilated = morphology.dilation(eroded, footprint=morphology.disk(disk_size))
 
     dilated = morphology.dilation(dilated, footprint=morphology.disk(disk_size))
-    eroded = morphology.erosion(dilated, footprint=morphology.disk(disk_size))
+    smoothed_mask = morphology.erosion(dilated, footprint=morphology.disk(disk_size))
 
-    # Find contours in the smoothed mask
-    contours = _get_object_contours(eroded)
+    # # Find contours in the smoothed mask
+    # contours = _get_object_contours(smoothed_mask)
 
-    # Draw the smoothed contours on the mask
-    smoothed_mask = np.zeros_like(mask, dtype=np.uint8)
-    for contour in contours:
-        cv2.fillPoly(smoothed_mask, [contour], 1)
+    # # Draw the smoothed contours on the mask
+    # smoothed_mask = np.zeros_like(mask, dtype=np.uint8)
+    # for contour in contours:
+    #     cv2.fillPoly(smoothed_mask, [contour], 1)
 
     return check_mask_format_(smoothed_mask)  # , check_mask_format_(filtered_mask)
 
@@ -494,8 +494,14 @@ def compute_masks_stats_v1(
 
 
 def post_process(
-    binary_pred, max_hole_size=50, min_object_size=200, max_filter_size=30, footprint=40
+    binary_pred,
+    smooth_disk=0,
+    max_hole_size=50,
+    min_object_size=200,
+    max_filter_size=30,
+    footprint=40,
 ):
+    binary_pred = smooth_contours(binary_pred, smooth_disk)
     connect_pattern = 1
     # Find object in predicted image
     labels_pred = measure.label(binary_pred, connectivity=connect_pattern)
