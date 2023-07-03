@@ -68,6 +68,14 @@ parser.add_argument(
 
 # Add the hole_size argument
 parser.add_argument(
+    "--smooth_disk",
+    type=int,
+    default=0,
+    help="Size of disk used to smoothing object contours (default: 0)",
+)
+
+# Add the hole_size argument
+parser.add_argument(
     "--max_hole",
     type=int,
     default=50,
@@ -223,6 +231,7 @@ def main(postproc_cfg):
         )
         post_proc_mask = post_process(
             heatmap.numpy(),
+            smooth_disk=postproc_cfg.smooth_disk,
             max_hole_size=postproc_cfg.max_hole,
             min_object_size=postproc_cfg.min_size,
             max_filter_size=postproc_cfg.max_dist,
