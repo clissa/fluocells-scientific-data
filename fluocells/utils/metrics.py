@@ -115,3 +115,29 @@ def eval_prediction(mask, pred_mask, eval_type, TP_threshold):
             f"Unknown evaluation type '{eval_type}'. Please choose either 'iou' or 'proximity'."
         )
     return TP, FP, FN
+
+
+def all_metrics(metrics, eval_type, eps=0.01):
+    metrics["Target_count"] = (
+        metrics["TP_iou"] + metrics["FN_prox"]
+    )  # target don't depend on eval_type!
+    metrics["Predicted_count"] = (
+        metrics[f"TP_{eval_type}"] + metrics[f"FN_{eval_type}"]
+    )  # predicted vary based on eval_type!
+    # compute performance measure for the current quantile filter
+    tot_tp_test = metrics[f"TP_{eval_type}"].sum()
+    tot_fp_test = metrics[f"FP_{eval_type}"].sum()
+    tot_fn_test = metrics[f"FN_{eval_type}"].sum()
+    tot_abs_diff = abs(metrics["Target_count"] - metrics["Predicted_count"])
+    tot_perc_diff = (metrics["Predicted_count"] - metrics["Target_count"]) / (
+        metrics["Target_count"].replace(0, 1)
+    )  # avoid ZeroDivisionError:
+    accuracy = (tot_tp_test) / (tot_tp_test + tot_fp_test + tot_fn_test + eps)
+    precision = (tot_tp_test) / (tot_tp_test + tot_fp_test + eps)
+    recall = (tot_tp_test) / (tot_tp_test + tot_fn_test + eps)
+    F1_score = 2 * precision * recall / (precision + recall)
+    MAE = tot_abs_diff.mean()
+    MedAE = tot_abs_diff.median()
+    MPE = tot_perc_diff.mean()
+
+    return (F1_score, accuracy, precision, recall, MAE, MedAE, MPE)
