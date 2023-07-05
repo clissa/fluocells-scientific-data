@@ -1,5 +1,7 @@
 ### Custom
 
+evaluate_all.py
+
 # data folders
 raw_data*
 dataset*
@@ -9,18 +11,6 @@ figures/
 logs/
 models/
 results/
-
-# temporary
-dataOps/compute_masks_stats.py
-notebooks/Challenges*
-notebooks/Data*
-notebooks/Future*
-Orx*
-INFN*
-red_original/
-red_raw
-red original.zip
-dataOps/temp.py
 
 ### Template
 
