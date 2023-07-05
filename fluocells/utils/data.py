@@ -531,5 +531,8 @@ def post_process(
     watershed_mask = segmentation.watershed(
         -distance, markers, mask=labels_bool, compactness=1, watershed_line=True
     )
+    cleaned_pred = remove_small_objects(
+        watershed_mask, min_size=min_object_size, connectivity=connect_pattern
+    )
 
-    return watershed_mask.astype("uint8") * 255
+    return cleaned_pred.astype("uint8") * 255
