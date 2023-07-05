@@ -150,8 +150,6 @@ def main(postproc_cfg):
 
     log_path = REPO_PATH / "logs" / EXP_NAME
     model_path = MODELS_PATH / EXP_NAME
-    # results_path = REPO_PATH / "results" / EXP_NAME
-    # results_path.mkdir(exist_ok=True, parents=True)
 
     trainval_path = dataset_path / "trainval" / "images"
 
@@ -230,7 +228,7 @@ def main(postproc_cfg):
             (heatmap.numpy() > postproc_cfg.bin_thresh).astype("uint8")
         )
         post_proc_mask = post_process(
-            heatmap.numpy(),
+            thresh_image,
             smooth_disk=postproc_cfg.smooth_disk,
             max_hole_size=postproc_cfg.max_hole,
             min_object_size=postproc_cfg.min_size,
@@ -239,7 +237,6 @@ def main(postproc_cfg):
         )
 
         mask_label = measure.label(mask.squeeze())
-        # pred_mask_label = measure.label(pred_mask)
         pred_mask_label = measure.label(post_proc_mask)
 
         TP, FP, FN = eval_prediction(
