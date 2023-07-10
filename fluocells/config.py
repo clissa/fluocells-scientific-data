@@ -24,7 +24,7 @@ METADATA = dict(
     dataset_name = "Fluorescent Neuronal Cells dataset",
     data_url = "<CHECK-AMS-ACTA-DOI>",
     contributors = ["Luca Clissa", "Roberto Morelli", "et al."],
-    current_version = "v1_8",
+    current_version = "v1_9",
 )
 
 # reproducibility
