@@ -109,7 +109,7 @@ For more details, please refer to evaluate.py parser help.
 
 The results are stored under the `logs/<exp_name>` folder.
 
-After that, simply run the [`compute_metrics.py`](compute_metrics.py) script to compute *segmentation, detection* (F1 score, precision, recall) and *counting* (MAE, MedAE, MPE) metrics.
+After that, simply run the [`compute_metrics.py`](compute_metrics.py) script to compute *segmentation, detection* (F1 score, precision, recall) and *counting* (MAE, MedAE, MPE) metrics:
 
 ```
 python compute_metrics.py exp_name1 [exp_name2 ...]
