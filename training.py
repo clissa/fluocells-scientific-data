@@ -1,7 +1,7 @@
 """
 This scripts perform a basic training pipeline. It takes 3 CLI arguments:
 
- - dataset (greeen, yellow or red): dataset to train on
+ - dataset (green, yellow or red): dataset to train on
  - seed: initialization for data split and network weights/training cycle
  - gpu_id: id of the gpu to use for training
 
