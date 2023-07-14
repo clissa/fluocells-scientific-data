@@ -5,12 +5,16 @@ evaluate_all.py
 # data folders
 raw_data*
 dataset*
+metadata_v2*.xlsx
 
 # output
 figures/
 logs/
 models/
 results/
+
+# extras
+fix_orignames.py
 
 ### Template
 
