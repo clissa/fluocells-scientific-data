@@ -1,10 +1,9 @@
 
-[![Python 3.9.7](https://img.shields.io/badge/python-3.9.7-blue.svg)](https://www.python.org/downloads/release/python-360/)
+[![Python 3.9.16](https://img.shields.io/badge/python-3.9.16-blue.svg)](https://www.python.org/downloads/release/python-3916/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&logo=Pytorch&logoColor=white"/></a>
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2FTIO-IKIM%2FCellViT&label=Visitors&countColor=%23263759&style=flat)](https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2FTIO-IKIM%2FCellViT)
-
+[![Visitors](https://api.visitorbadge.io/api/visitors?path=https%3A%2F%2Fgithub.com%2Fclissa%2Ffluocells-scientific-data&countColor=%23263759)](https://visitorbadge.io/status?path=https%3A%2F%2Fgithub.com%2Fclissa%2Ffluocells-scientific-data)
 # Fluocells Neuronal Cells v2
 
 ![Data preview](figures/data_preview.png)
@@ -83,6 +82,7 @@ dataset_v2/<dataset_name>
     ├── images
     └── metadata
 
+where
 ./ground_truths/
 ├── masks: png images with binary masks
 ├── rle: pickle files with Running Length Encoding (RLE) of binary masks
@@ -105,7 +105,7 @@ The prediction include also post-processing operations like: *contours smoothing
 
 The association of true and predicted objects (namely, True Positives, False Positives and False Negatives) is computed based on both i) overlapping (IoU) and ii) proximity (centers distance).
 The arguments `iou_thresh` and `prox_thresh` determine the cutoff for a positive match (TP) for i) and ii), respectively.
-For more details, please refer to evaluate.py parser help.
+For more details, please refer to [evaluate.py](evaluate.py) parser help.
 
 The results are stored under the `logs/<exp_name>` folder.
 
