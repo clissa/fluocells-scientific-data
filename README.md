@@ -8,7 +8,7 @@
 
 ![Data preview](figures/data_preview.png)
 
-This repository contains the code accompanying the submission to Scientific Data of the **Fluocells Neuronal Cells (FNC) v_2 archive**.
+This repository contains the code accompanying the submission to Scientific Data of the **Fluocells Neuronal Cells (FNC) v_2 dataset**.
 This is a collection of 1874 high-resolution images acquired with a fluorescence microscope. 
 The pictures depict several neuronal and subnuclear structures, highlighted with various staining patterns.
 Alongside the images, we also share 750 ground-truth labels in several popular annotation *types* (*segmentation masks, bounding boxes, dot-annotation, count*) and *formats* (*binary masks, COCO, Pascal VOC, VIA*). 
@@ -69,7 +69,7 @@ python training.py <dataset_name> [--seed N] [--gpu_id 0]
 Note that this assumes the `DATA_PATH` variable in [`fluocells/config.py`](fluocells/config.py) is correctly set to the folder where FNC data are, with the following structure:
 
 ```
-dataset_v2/<dataset_name>
+dataset_v2/<collection_name> # with collection_name = green, red or yellow
 ├── test
 │   ├── ground_truths
 │   ├── images
@@ -88,9 +88,9 @@ where
 ├── rle: pickle files with Running Length Encoding (RLE) of binary masks
 ├── Pascal_VOC: *.xml* files with image annotations (polygon, bbox, dot)
 ├── COCO
-    └── annotations_green_trainval.json
+    └── annotations_<collection_name>_trainval.json # with collection_name = green, red or yellow
 └── VIA
-    └── annotations_green_trainval.json
+    └── annotations_<collection_name>_trainval.json # with collection_name = green, red or yellow
 ```
 
 ### Evaluation
