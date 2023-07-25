@@ -74,8 +74,8 @@ _Are there multiple types of instances (e.g., movies, users, and ratings; people
 interactions between them; nodes and edges)? Please provide a description._
 
     Inside each image, the marked biological structures may vary depending on the specific wavelength we observe. This can be:
-     - cell nucleous --> green
-     - cell cyitoplasm --> red
+     - cell nucleus --> green
+     - cell cytoplasm --> red
      - cell cytoplasm --> yellow
 
 ### How many instances are there in total (of each type, if appropriate)?
@@ -265,7 +265,8 @@ associated with the instances was created._
 _If so, please provide a description of these review processes, including the outcomes, as well as
 a link or other access point to any supporting documentation._
 
-    All the experiments were conducted following approval by the National Health Authority (decree: No.141/2018 - PR/AEDB0.8.EXT.4), in accordance with the DL 26/2014 and the European Union Directive 2010/63/EU, and under the supervision of the Central Veterinary Service of the University of Bologna. All efforts were made to minimize the number of animals used and their pain and distress.
+    All the experiments were conducted following approval by the ethical committee of National Health Authority. Mice and rats underwent experiments in different time and were subjected to different legislations for the ethical approvement of the experimental procedures: i) for rats, the experimental protocol was approved by the Ethical Committee for Animal Research of the University of Bologna and by the Italian Ministry of Health (decree: No.186/2013-B), and was performed in accordance with the European Union (2010/63/UE) and the Italian Ministry of Health (January 27, 1992, No. 116) Directives, under the supervision of the Central Veterinary Service of the University of Bologna and the National Health Authority; ii) for mice, the experimental protocol was approved by the National Health Authority (decree: No.141/2018 - PR/AEDB0.8.EXT.4), in accordance with the DL 26/2014 and the European Union Directive 2010/63/EU, and under the supervision of the Central Veterinary Service of the University of Bologna. All efforts were made to minimize the number of animals used and their pain and distress.
+
 
 ### Does the dataset relate to people?
 
@@ -309,7 +310,7 @@ or other access point to any supporting documentation._
 
 ### Any other comments?
 
-    The annotation process was conducted in compliance with a protocol specified prior to data annotation. For more details, please check the `Annotation protocol.pdf` file insize the `annotations.zip` archive.
+    The annotation process was conducted in compliance with a protocol specified prior to data annotation. For more details, please check the `Annotation protocol.pdf` file inside the `annotations.zip` archive.
 
 ---
 ## Preprocessing/cleaning/labeling
@@ -324,7 +325,7 @@ not suitable for tasks involving word order._
 _If so, please provide a description. If not, you may skip the remainder of the questions in
 this section._
 
-    The original images were simply converted from *.TIF* to *.png* format to facilitate accessibility. This was done taking care of preserving exif metadata.
+    The original images were simply converted from *.TIF* to *.png* format to facilitate accessibility. This was done taking care of preserving EXIF metadata.
     For more details, please check `dataOps/convert_raw2png.py` script in the [GitHub repository](https://github.com/clissa/fluocells-scientific-data).
 
 
@@ -338,7 +339,7 @@ _If so, please provide a link or other access point to the “raw” data._
 
 _If so, please provide a link or other access point._
 
-    #Yes, please check the [GitHub repository](https://github.com/clissa/fluocells-scientific-data).
+    Yes, please check the [GitHub repository](https://github.com/clissa/fluocells-scientific-data).
 
 ### Any other comments?
 
